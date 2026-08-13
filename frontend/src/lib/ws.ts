@@ -27,6 +27,9 @@ export function connect() {
       case 'TextDelta':
         store.appendDelta(event.delta)
         break
+      case 'Thinking':
+        store.setThinking(event.text)
+        break
       case 'ToolCallEvent':
         store.appendStep({ name: event.name, ok: true, summary: 'running…', durationSeconds: 0, detail: {} })
         if (event.name === 'write_file' || event.name === 'edit_file' || event.name === 'create_structure') {

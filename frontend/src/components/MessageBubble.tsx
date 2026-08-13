@@ -18,7 +18,9 @@ export default function MessageBubble({ message }: Props) {
 
   return (
     <div className="space-y-2">
-      {message.thoughtSeconds != null && <Thought seconds={message.thoughtSeconds} />}
+      {(message.thoughtSeconds != null || message.thinking) && (
+        <Thought seconds={message.thoughtSeconds} thinking={message.thinking} />
+      )}
       {message.files.length > 0 && <EditedFiles files={message.files} />}
       {message.steps.length > 0 && <Steps steps={message.steps} />}
       {message.text && <p className="whitespace-pre-wrap text-sm leading-relaxed text-fg">{message.text}</p>}
@@ -28,17 +30,27 @@ export default function MessageBubble({ message }: Props) {
   )
 }
 
-function Thought({ seconds }: { seconds: number }) {
+function Thought({ seconds, thinking }: { seconds: number | null; thinking: string }) {
   const [open, setOpen] = useState(false)
+  const hasThinking = thinking && thinking.trim().length > 0
   return (
-    <button
-      onClick={() => setOpen(!open)}
-      className="flex items-center gap-2 rounded-lg border border-border bg-deep/40 px-3 py-1.5 text-xs text-muted hover:text-fg"
-    >
-      <span>💭</span>
-      <span>Thought for {seconds} second{seconds === 1 ? '' : 's'}</span>
-      <span className="ml-1 text-muted">{open ? '▾' : '▸'}</span>
-    </button>
+    <div className="rounded-lg border border-border bg-deep/40">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-muted hover:text-fg"
+      >
+        <span>💭</span>
+        <span>
+          {seconds != null ? `Thought for ${seconds} second${seconds === 1 ? '' : 's'}` : 'Thinking'}
+        </span>
+        {hasThinking && <span className="ml-1 text-muted">{open ? '▾' : '▸'}</span>}
+      </button>
+      {open && hasThinking && (
+        <div className="border-t border-border px-3 py-2 text-xs leading-relaxed text-muted whitespace-pre-wrap">
+          {thinking}
+        </div>
+      )}
+    </div>
   )
 }
 

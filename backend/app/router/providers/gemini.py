@@ -118,12 +118,17 @@ class GeminiAdapter(ProviderAdapter):
     @staticmethod
     def _parse_result(data: dict) -> GenerateResponse:
         text_parts: list[str] = []
+        reasoning_parts: list[str] = []
         tool_calls: list[ToolCall] = []
 
         for candidate in data.get("candidates", []):
             for part in (candidate.get("content") or {}).get("parts", []):
                 if "text" in part:
-                    text_parts.append(part["text"])
+                    # Gemini marks thinking parts with thought=True.
+                    if part.get("thought"):
+                        reasoning_parts.append(part["text"])
+                    else:
+                        text_parts.append(part["text"])
                 if "functionCall" in part:
                     fc = part["functionCall"]
                     args = fc.get("args") if isinstance(fc.get("args"), dict) else {}
@@ -134,4 +139,5 @@ class GeminiAdapter(ProviderAdapter):
         return GenerateResponse(
             text="".join(text_parts) or None,
             tool_calls=tool_calls,
+            reasoning="".join(reasoning_parts) or None,
         )

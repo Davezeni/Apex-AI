@@ -24,3 +24,5 @@ services:
         sync: false
       - key: SANDBOX_BACKEND
         value: docker
+      - key: ENABLE_OLLAMA
+        value: "false"

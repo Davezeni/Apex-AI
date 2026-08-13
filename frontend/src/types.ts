@@ -2,6 +2,7 @@
 
 export type AgentEvent =
   | { type: 'TextDelta'; delta: string }
+  | { type: 'Thinking'; text: string }
   | { type: 'ToolCallEvent'; name: string; arguments: Record<string, unknown> }
   | { type: 'ToolResultEvent'; name: string; ok: boolean; summary: string; durationSeconds: number; detail: Record<string, unknown> }
   | { type: 'Done'; text: string }
@@ -30,6 +31,8 @@ export interface ChatMessage {
   files: FileChange[]
   /** thinking duration in seconds (for "Thought for Xs") */
   thoughtSeconds: number | null
+  /** actual chain-of-thought / reasoning text from the model */
+  thinking: string
   error?: string
   pending?: boolean
 }

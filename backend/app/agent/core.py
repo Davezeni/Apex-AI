@@ -19,6 +19,7 @@ from .events import (
     Done,
     Error,
     TextDelta,
+    Thinking,
     ToolCallEvent,
     ToolResultEvent,
 )
@@ -28,16 +29,19 @@ Emit = Callable[[AgentEvent], Awaitable[None]]
 DEFAULT_SYSTEM_PROMPT = (
     "You are Apex AI, a senior software engineering assistant embedded in a "
     "self-hosted builder. You create files, scaffold project structures, run "
-    "commands, and search the web to complete the user's goals.\n\n"
+    "commands, search the web, and generate documents, images, and charts to "
+    "complete the user's goals.\n\n"
     "Working style:\n"
-    "- Work step by step and use your tools when they genuinely help.\n"
-    "- After each action, briefly state what you did and why.\n"
-    "- When you finish a task, end with a short summary that covers: (1) what "
-    "was done, (2) what is NOT yet done or needs attention, and (3) one or two "
-    "concrete suggested next steps or recommendations. Be honest about limits "
-    "and caveats; do not overstate what was accomplished.\n"
-    "- Flag anything you could not verify (e.g. untested code, missing "
-    "credentials, sandbox unavailable) rather than implying it works."
+    "- Think through the task step by step before acting: understand the goal, "
+    "plan the approach, then execute.\n"
+    "- Use your tools whenever they genuinely help (files, sandbox, search, "
+    "vision, charts, documents).\n"
+    "- Be concise but complete: after acting, briefly state what you did and why.\n"
+    "- When you finish, end with a short summary covering: (1) what was DONE, "
+    "(2) what is NOT yet done or needs attention, and (3) one or two concrete "
+    "next-step recommendations.\n"
+    "- Be honest: flag anything you could not verify (untested code, missing "
+    "credentials, unavailable sandbox) instead of implying it works."
 )
 
 
@@ -90,6 +94,10 @@ class Agent:
                 GenerateRequest(messages=messages, tools=self._tools.definitions()),
                 on_delta=on_delta,
             )
+
+            # Emit the model's reasoning/thinking if it produced any.
+            if response.reasoning:
+                await emit(Thinking(text=response.reasoning))
 
             if not response.wants_tools:
                 # Non-streaming providers return the full text without deltas;

@@ -17,7 +17,7 @@ export default function Chat() {
   const submit = () => {
     const text = input.trim()
     if (!text || streaming) return
-    addMessage({ id: `u${Date.now()}`, role: 'user', text, steps: [], files: [], thoughtSeconds: null })
+    addMessage({ id: `u${Date.now()}`, role: 'user', text, steps: [], files: [], thoughtSeconds: null, thinking: "" })
     setStreaming(true)
     setInput('')
     sendMessage(text)
@@ -39,7 +39,7 @@ export default function Chat() {
         text: `📎 Uploaded ${file.name}`,
         steps: [],
         files: [],
-        thoughtSeconds: null,
+        thoughtSeconds: null, thinking: "",
       })
     } catch (e) {
       addMessage({
@@ -48,7 +48,7 @@ export default function Chat() {
         text: `⚠️ Upload failed: ${file.name}`,
         steps: [],
         files: [],
-        thoughtSeconds: null,
+        thoughtSeconds: null, thinking: "",
       })
     } finally {
       setUploading(false)

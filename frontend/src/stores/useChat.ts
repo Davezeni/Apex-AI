@@ -18,6 +18,7 @@ interface ChatState {
   appendStep: (step: ToolStep) => void
   markFile: (file: FileChange) => void
   setThought: (seconds: number) => void
+  setThinking: (thinking: string) => void
   finishMessage: () => void
   failMessage: (error: string) => void
   setStreaming: (v: boolean) => void
@@ -64,7 +65,7 @@ export const useChat = create<ChatState>((set) => ({
       if (last && last.role === 'assistant' && last.pending) {
         msgs[msgs.length - 1] = { ...last, text: last.text + delta }
       } else {
-        msgs.push({ id: uid(), role: 'assistant', text: delta, steps: [], files: [], thoughtSeconds: null, pending: true })
+        msgs.push({ id: uid(), role: 'assistant', text: delta, steps: [], files: [], thoughtSeconds: null, thinking: "", pending: true })
       }
       return { messages: msgs }
     }),
@@ -102,6 +103,16 @@ export const useChat = create<ChatState>((set) => ({
       return { messages: msgs }
     }),
 
+  setThinking: (thinking) =>
+    set((s) => {
+      const msgs = [...s.messages]
+      const last = msgs[msgs.length - 1]
+      if (last && last.role === 'assistant') {
+        msgs[msgs.length - 1] = { ...last, thinking }
+      }
+      return { messages: msgs }
+    }),
+
   finishMessage: () =>
     set((s) => {
       const msgs = [...s.messages]
@@ -119,7 +130,7 @@ export const useChat = create<ChatState>((set) => ({
       if (last && last.role === 'assistant') {
         msgs[msgs.length - 1] = { ...last, pending: false, error }
       } else {
-        msgs.push({ id: uid(), role: 'assistant', text: '', steps: [], files: [], thoughtSeconds: null, error, pending: false })
+        msgs.push({ id: uid(), role: 'assistant', text: '', steps: [], files: [], thoughtSeconds: null, thinking: "", error, pending: false })
       }
       return { messages: msgs, streaming: false }
     }),

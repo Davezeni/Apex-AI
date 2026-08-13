@@ -57,6 +57,9 @@ class Settings(BaseSettings):
 
     # --- Local model ---
     ollama_base_url: str = "http://localhost:11434"
+    # Disable on hosts without a local Ollama server (e.g. Render) to avoid
+    # wasted failover attempts. Set ENABLE_OLLAMA=false in that environment.
+    enable_ollama: bool = True
 
     # --- Agent / router tuning ---
     max_iterations: int = 12
@@ -72,9 +75,14 @@ class Settings(BaseSettings):
     codespace_name: str = ""         # required when sandbox_backend == "codespaces"
 
     # --- Model pool (overridable via config.yaml) ---
+    # Ordered for round-robin: three fast Groq models first (spread across
+    # different strengths: general, strong reasoning, coding), then Gemini
+    # (multimodal + fallback), then local Ollama as the unlimited floor.
     pool: list[PoolEntry] = Field(
         default_factory=lambda: [
             PoolEntry(provider="groq", model="llama-3.3-70b-versatile", priority=1),
+            PoolEntry(provider="groq", model="openai/gpt-oss-120b", priority=1),
+            PoolEntry(provider="groq", model="qwen/qwen3.6-27b", priority=1),
             PoolEntry(provider="gemini", model="gemini-3.5-flash", priority=2),
             PoolEntry(provider="ollama", model="qwen2.5:14b", priority=9),
         ]

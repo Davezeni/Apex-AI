@@ -88,6 +88,7 @@ class OpenAICompatAdapter(ProviderAdapter):
         self, payload: dict, on_delta: DeltaCallback
     ) -> GenerateResponse:
         text_parts: list[str] = []
+        reasoning_parts: list[str] = []
         tool_calls: dict[int, dict] = {}
 
         try:
@@ -108,6 +109,9 @@ class OpenAICompatAdapter(ProviderAdapter):
                         break
                     chunk = json.loads(data)
                     delta = chunk["choices"][0].get("delta") or {}
+
+                    if delta.get("reasoning"):
+                        reasoning_parts.append(delta["reasoning"])
 
                     if delta.get("content"):
                         text_parts.append(delta["content"])
@@ -134,7 +138,8 @@ class OpenAICompatAdapter(ProviderAdapter):
             calls.append(ToolCall(id=slot["id"], name=slot["name"], arguments=args))
 
         text = "".join(text_parts) or None
-        return GenerateResponse(text=text, tool_calls=calls)
+        reasoning = "".join(reasoning_parts) or None
+        return GenerateResponse(text=text, tool_calls=calls, reasoning=reasoning)
 
     @staticmethod
     def _parse_message(message: dict) -> GenerateResponse:
@@ -148,9 +153,14 @@ class OpenAICompatAdapter(ProviderAdapter):
             tool_calls.append(
                 ToolCall(id=tc.get("id", ""), name=fn.get("name", ""), arguments=args)
             )
+        reasoning = message.get("reasoning") or None
+        content = message.get("content")
+        # Some reasoning models return only `reasoning` and empty content when
+        # they think; treat trailing reasoning as the answer if no content.
         return GenerateResponse(
-            text=message.get("content") or None,
+            text=content or None,
             tool_calls=tool_calls,
+            reasoning=reasoning,
         )
 
     @staticmethod

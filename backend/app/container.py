@@ -66,14 +66,16 @@ def build_adapters(settings: Settings) -> dict[str, ProviderAdapter]:
             api_key=settings.gemini_api_key,
             default_model="gemini-3.5-flash",
         )
-    # Ollama is local and needs no key; always available.
-    adapters["ollama"] = OpenAICompatAdapter(
-        name="ollama",
-        base_url=f"{settings.ollama_base_url}/v1",
-        api_key=None,
-        default_model="qwen2.5:14b",
-        timeout=settings.request_timeout_seconds,
-    )
+    # Ollama is local and needs no key; register only when enabled (skipped on
+    # hosts like Render where no local server runs).
+    if settings.enable_ollama:
+        adapters["ollama"] = OpenAICompatAdapter(
+            name="ollama",
+            base_url=f"{settings.ollama_base_url}/v1",
+            api_key=None,
+            default_model="qwen2.5:14b",
+            timeout=settings.request_timeout_seconds,
+        )
     return adapters
 
 

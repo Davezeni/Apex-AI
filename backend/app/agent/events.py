@@ -12,6 +12,13 @@ class TextDelta:
 
 
 @dataclass(frozen=True)
+class Thinking:
+    """Chain-of-thought / reasoning text from the model."""
+
+    text: str
+
+
+@dataclass(frozen=True)
 class ToolCallEvent:
     name: str
     arguments: dict[str, Any]
@@ -37,4 +44,4 @@ class Error:
     message: str
 
 
-AgentEvent = TextDelta | ToolCallEvent | ToolResultEvent | Done | Error
+AgentEvent = TextDelta | Thinking | ToolCallEvent | ToolResultEvent | Done | Error

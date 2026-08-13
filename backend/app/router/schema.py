@@ -56,6 +56,8 @@ class GenerateResponse:
 
     text: str | None = None
     tool_calls: list[ToolCall] = field(default_factory=list)
+    # Optional chain-of-thought / reasoning emitted by reasoning models.
+    reasoning: str | None = None
 
     @property
     def wants_tools(self) -> bool:

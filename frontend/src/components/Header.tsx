@@ -34,9 +34,6 @@ export default function Header() {
         )}
       </div>
 
-      <div className="ml-auto flex items-center gap-2 text-muted text-sm">
-        <span>11:18 PM</span>
-      </div>
     </header>
   )
 }

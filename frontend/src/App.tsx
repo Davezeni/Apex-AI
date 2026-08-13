@@ -44,7 +44,7 @@ export default function App() {
           </section>
         </div>
 
-        {/* Mobile: single pane with bottom tabs */}
+        {/* Mobile: top tabs + single pane */}
         <div className="flex flex-1 flex-col md:hidden">
           {mobileMenuOpen && (
             <>
@@ -56,23 +56,25 @@ export default function App() {
             </>
           )}
 
-          <div className="flex-1 overflow-hidden">
-            {activePane === 'chat' && <Chat />}
-            {activePane === 'code' && <Workspace />}
-            {activePane === 'preview' && <Preview />}
-          </div>
-          <nav className="flex border-t border-border bg-panel">
+          {/* Tabs at the top (under the header) */}
+          <nav className="flex border-b border-border bg-panel">
             {TABS.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setPane(t.id)}
-                className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-xs ${activePane === t.id ? 'text-fg' : 'text-muted'}`}
+                className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-xs ${activePane === t.id ? 'text-fg' : 'text-muted'} ${activePane === t.id ? 'border-b-2 border-fg' : 'border-b-2 border-transparent'}`}
               >
                 <span className="text-base">{t.icon}</span>
                 {t.label}
               </button>
             ))}
           </nav>
+
+          <div className="flex-1 overflow-hidden">
+            {activePane === 'chat' && <Chat />}
+            {activePane === 'code' && <Workspace />}
+            {activePane === 'preview' && <Preview />}
+          </div>
         </div>
       </div>
     </div>
