@@ -16,6 +16,8 @@ from .router.providers.base import ProviderAdapter
 from .router.providers.gemini import GeminiAdapter
 from .router.providers.openai_compat import OpenAICompatAdapter
 from .router.router import ModelRouter, PoolEntry
+from .sandbox.base import Sandbox
+from .sandbox.codespaces import CodespacesSandbox
 from .sandbox.docker import DockerSandbox
 from .tools.document import ConvertFileTool, ParseDocumentTool
 from .tools.filesystem import (
@@ -98,8 +100,17 @@ def build_github(settings: Settings) -> GitHubClient | None:
     return GitHubClient(settings.github_token) if settings.github_token else None
 
 
-def build_sandbox(settings: Settings) -> DockerSandbox | None:
-    # Docker container name is configurable later; use a stable default.
+def build_sandbox(settings: Settings) -> Sandbox | None:
+    """Select the sandbox backend by configuration.
+
+    - "docker": local container mounting the workspace (recommended default).
+    - "codespaces": GitHub Codespaces via the `gh` CLI; requires an active
+      Codespace and `codespace_name` set.
+    """
+    if settings.sandbox_backend == "codespaces":
+        if not settings.codespace_name:
+            return None
+        return CodespacesSandbox(codespace_name=settings.codespace_name)
     return DockerSandbox(container="apex-sandbox")
 
 
@@ -140,7 +151,7 @@ def build_tools(
 def build_tool_context(
     settings: Settings,
     github: GitHubClient | None = None,
-    sandbox: DockerSandbox | None = None,
+    sandbox: Sandbox | None = None,
     knowledge: KnowledgeBase | None = None,
 ) -> ToolContext:
     settings.workspace_root.mkdir(parents=True, exist_ok=True)

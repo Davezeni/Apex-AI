@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     # --- Workspace ---
     workspace_root: Path = ROOT_DIR / "workspace"
 
+    # --- Sandbox selection ---
+    sandbox_backend: str = "docker"  # "docker" | "codespaces"
+    codespace_name: str = ""         # required when sandbox_backend == "codespaces"
+
     # --- Model pool (overridable via config.yaml) ---
     pool: list[PoolEntry] = Field(
         default_factory=lambda: [
