@@ -1,135 +1,134 @@
-"""Native Gemini provider adapter.
+"""Native Gemini provider adapter (REST via httpx).
 
-Uses Google's `google-genai` SDK against the *native* Gemini endpoint, which
-is required for the newer `AQ.` authentication keys (OpenAI-compatible routes
-reject them with 401). See docs/03-software-design.md §3.2.
+Uses the *native* `generativelanguage.googleapis.com` endpoint, which is
+required for the newer `AQ.` authentication keys (OpenAI-compatible routes
+reject them with 401). Verified live against the `gemini-3.5-flash` model.
 
-The SDK call is synchronous, so it is executed in a thread via
-`asyncio.to_thread` to avoid blocking the event loop. Streaming deltas are
-currently deferred (on_delta is ignored); see NOTE below.
+No third-party SDK dependency: request/response mapping is explicit, including
+native function calling (`functionDeclarations` → `functionCall` /
+`functionResponse` parts).
 """
 
 from __future__ import annotations
 
-import asyncio
 import json
 
-from google import genai
-from google.genai import types
+import httpx
 
 from .base import DeltaCallback, ProviderAdapter, ProviderError, RateLimitError
 from ..schema import GenerateRequest, GenerateResponse, Message, ToolCall
 
-_ROLE_MAP = {
-    "system": "user",  # Gemini has no system role; see _system_instruction below
-    "user": "user",
-    "assistant": "model",
-    "tool": "user",
-}
+ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 
 class GeminiAdapter(ProviderAdapter):
-    """Adapter for Google Gemini via the native google-genai SDK."""
-
     name = "gemini"
 
-    def __init__(self, api_key: str | None, default_model: str) -> None:
+    def __init__(self, api_key: str, default_model: str, timeout: float = 120.0) -> None:
         if not api_key:
             raise ProviderError("Gemini adapter requires an API key")
-        self._client = genai.Client(api_key=api_key)
+        self._key = api_key
         self.default_model = default_model
+        self._client = httpx.AsyncClient(timeout=timeout)
 
     async def generate(
         self,
         req: GenerateRequest,
         on_delta: DeltaCallback = None,
     ) -> GenerateResponse:
-        # NOTE: streaming is deferred; on_delta is intentionally unused until
-        # the async streaming API is verified against the installed SDK version.
+        # NOTE: streaming (on_delta) is not used; Gemini non-stream returns the
+        # full text, which the agent emits once.
         del on_delta
 
-        contents = self._to_contents(req)
-        config = types.GenerateContentConfig(
-            temperature=req.temperature,
-            max_output_tokens=req.max_tokens,
-            tools=self._to_tools(req) if req.tools else None,
-            system_instruction=self._system_instruction(req),
-        )
+        model = req.model or self.default_model
+        url = ENDPOINT.format(model=model) + f"?key={self._key}"
+
+        payload: dict = {
+            "contents": self._to_contents(req),
+            "generationConfig": {
+                "temperature": req.temperature,
+                "maxOutputTokens": req.max_tokens,
+            },
+        }
+        system = self._system_instruction(req)
+        if system:
+            payload["systemInstruction"] = {"parts": [{"text": system}]}
+        tools = self._to_tools(req)
+        if tools:
+            payload["tools"] = tools
 
         try:
-            result = await asyncio.to_thread(
-                self._client.models.generate_content,
-                model=req.model or self.default_model,
-                contents=contents,
-                config=config,
-            )
-        except Exception as exc:  # noqa: BLE001 — SDK raises various types
-            raise ProviderError(f"gemini error: {exc}") from exc
+            resp = await self._client.post(url, json=payload)
+        except httpx.HTTPError as exc:
+            raise ProviderError(f"gemini transport error: {exc}") from exc
 
-        return self._parse_result(result)
+        if resp.status_code == 429:
+            raise RateLimitError("gemini rate limited (HTTP 429)")
+        if resp.status_code >= 400:
+            raise ProviderError(f"gemini HTTP {resp.status_code}: {resp.text[:500]}")
+
+        return self._parse_result(resp.json())
 
     def _system_instruction(self, req: GenerateRequest) -> str | None:
         parts = [m.content for m in req.messages if m.role == "system" and m.content]
         return "\n\n".join(parts) if parts else None
 
-    def _to_contents(self, req: GenerateRequest) -> list[types.Content]:
-        """Map normalized messages to Gemini Content objects."""
-        contents: list[types.Content] = []
+    def _to_contents(self, req: GenerateRequest) -> list[dict]:
+        contents: list[dict] = []
         for m in req.messages:
             if m.role == "system":
-                continue  # handled via system_instruction
+                continue
 
             if m.role == "tool":
-                # A tool result maps to a user turn with a function_response part.
-                part = types.Part.from_function_response(
-                    name=m.name or "tool",
-                    response={"result": m.content or ""},
-                )
-                contents.append(types.Content(role="user", parts=[part]))
+                contents.append({
+                    "role": "user",
+                    "parts": [{
+                        "functionResponse": {
+                            "name": m.name or "tool",
+                            "response": {"result": m.content or ""},
+                        }
+                    }],
+                })
                 continue
 
             if m.role == "assistant" and m.tool_calls:
                 parts = [
-                    types.Part.from_function_call(
-                        name=tc.name, args=tc.arguments
-                    )
+                    {"functionCall": {"name": tc.name, "args": tc.arguments}}
                     for tc in m.tool_calls
                 ]
-                contents.append(types.Content(role="model", parts=parts))
+                contents.append({"role": "model", "parts": parts})
                 continue
 
             if m.content:
-                contents.append(
-                    types.Content(role=_ROLE_MAP[m.role], parts=[types.Part(text=m.content)])
-                )
+                contents.append({"role": "user" if m.role == "user" else "model",
+                                 "parts": [{"text": m.content}]})
         return contents
 
     @staticmethod
-    def _to_tools(req: GenerateRequest) -> list[types.Tool]:
-        declarations = [
-            types.FunctionDeclaration(
-                name=t.name,
-                description=t.description,
-                parameters=types.Schema.model_validate(t.parameters),
-            )
-            for t in req.tools
-        ]
-        return [types.Tool(function_declarations=declarations)]
+    def _to_tools(req: GenerateRequest) -> list[dict] | None:
+        if not req.tools:
+            return None
+        return [{
+            "functionDeclarations": [
+                {"name": t.name, "description": t.description, "parameters": t.parameters}
+                for t in req.tools
+            ]
+        }]
 
     @staticmethod
-    def _parse_result(result) -> GenerateResponse:
+    def _parse_result(data: dict) -> GenerateResponse:
         text_parts: list[str] = []
         tool_calls: list[ToolCall] = []
 
-        for candidate in (result.candidates or []):
-            for part in (candidate.content.parts if candidate.content else []):
-                if part.text:
-                    text_parts.append(part.text)
-                if part.function_call:
-                    fc = part.function_call
-                    args = fc.args if isinstance(fc.args, dict) else {}
+        for candidate in data.get("candidates", []):
+            for part in (candidate.get("content") or {}).get("parts", []):
+                if "text" in part:
+                    text_parts.append(part["text"])
+                if "functionCall" in part:
+                    fc = part["functionCall"]
+                    args = fc.get("args") if isinstance(fc.get("args"), dict) else {}
                     tool_calls.append(
-                        ToolCall(id=fc.id or fc.name, name=fc.name, arguments=args)
+                        ToolCall(id=fc.get("name", ""), name=fc["name"], arguments=args)
                     )
 
         return GenerateResponse(

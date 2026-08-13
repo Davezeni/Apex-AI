@@ -42,7 +42,8 @@ class Settings(BaseSettings):
     """Runtime settings. Secret values originate from env / .env only."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Absolute path so the app finds .env regardless of CWD (repo root).
+        env_file=str(ROOT_DIR / ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
@@ -70,7 +71,7 @@ class Settings(BaseSettings):
     pool: list[PoolEntry] = Field(
         default_factory=lambda: [
             PoolEntry(provider="groq", model="llama-3.3-70b-versatile", priority=1),
-            PoolEntry(provider="gemini", model="gemini-2.5-flash", priority=2),
+            PoolEntry(provider="gemini", model="gemini-3.5-flash", priority=2),
             PoolEntry(provider="ollama", model="qwen2.5:14b", priority=9),
         ]
     )

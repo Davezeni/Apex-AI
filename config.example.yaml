@@ -12,7 +12,7 @@ models:
 
   pool:
     - { provider: groq,   model: "llama-3.3-70b-versatile", priority: 1 }
-    - { provider: gemini, model: "gemini-2.5-flash",        priority: 2 }
+    - { provider: gemini, model: "gemini-3.5-flash",        priority: 2 }
     - { provider: ollama, model: "qwen2.5:14b",             priority: 9 }
 
 agent:

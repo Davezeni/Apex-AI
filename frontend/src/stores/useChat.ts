@@ -5,9 +5,13 @@ interface ChatState {
   messages: ChatMessage[]
   activePane: Pane
   streaming: boolean
+  // Sidebar state (desktop collapse + mobile drawer)
+  sidebarCollapsed: boolean
+  mobileMenuOpen: boolean
   setPane: (pane: Pane) => void
+  toggleSidebar: () => void
+  setMobileMenu: (open: boolean) => void
   addMessage: (msg: ChatMessage) => void
-  /** append streamed text to the last assistant message (or create one) */
   appendDelta: (delta: string) => void
   appendStep: (step: { name: string; ok: boolean; summary: string }) => void
   finishMessage: () => void
@@ -22,8 +26,12 @@ export const useChat = create<ChatState>((set) => ({
   messages: [],
   activePane: 'chat',
   streaming: false,
+  sidebarCollapsed: false,
+  mobileMenuOpen: false,
 
-  setPane: (pane) => set({ activePane: pane }),
+  setPane: (pane) => set({ activePane: pane, mobileMenuOpen: false }),
+  toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+  setMobileMenu: (open) => set({ mobileMenuOpen: open }),
 
   addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
 

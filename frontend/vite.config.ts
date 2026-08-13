@@ -8,6 +8,8 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 3000,
+    // Allow the live-preview host (dynamic per sandbox) to embed the app.
+    allowedHosts: true,
     proxy: {
       '/api': { target: 'http://localhost:8000', changeOrigin: true },
       '/health': { target: 'http://localhost:8000', changeOrigin: true },
