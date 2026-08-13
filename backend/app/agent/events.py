@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 
@@ -22,6 +22,9 @@ class ToolResultEvent:
     name: str
     ok: bool
     summary: str
+    duration_seconds: float = 0.0
+    # Extra structured info (exit code, stdout/stderr, command, etc.).
+    detail: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

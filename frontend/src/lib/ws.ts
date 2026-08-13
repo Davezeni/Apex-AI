@@ -1,6 +1,6 @@
 // WebSocket client that dispatches backend agent events into the chat store.
 import { useChat } from '../stores/useChat'
-import type { AgentEvent } from '../types'
+import type { AgentEvent, ToolStep } from '../types'
 
 let socket: WebSocket | null = null
 let turnStart = 0
@@ -28,14 +28,20 @@ export function connect() {
         store.appendDelta(event.delta)
         break
       case 'ToolCallEvent':
-        store.appendStep({ name: event.name, ok: true, summary: 'running…' })
+        store.appendStep({ name: event.name, ok: true, summary: 'running…', durationSeconds: 0, detail: {} })
         if (event.name === 'write_file' || event.name === 'edit_file' || event.name === 'create_structure') {
           const path = (event.arguments as { path?: string })?.path || ''
           if (path) store.markFile({ path, lang: '', summary: event.name.replace('_', ' ') })
         }
         break
       case 'ToolResultEvent':
-        replaceLastStep({ name: event.name, ok: event.ok, summary: event.summary })
+        replaceLastStep({
+          name: event.name,
+          ok: event.ok,
+          summary: event.summary,
+          durationSeconds: event.durationSeconds,
+          detail: event.detail,
+        })
         break
       case 'Done':
         if (turnStart) store.setThought(Math.max(1, Math.round((Date.now() - turnStart) / 1000)))
@@ -52,11 +58,10 @@ export function connect() {
     socket = null
   })
 
-  // Start a turn timer when a user message is sent.
   turnStart = Date.now()
 }
 
-function replaceLastStep(step: { name: string; ok: boolean; summary: string }) {
+function replaceLastStep(step: ToolStep) {
   useChat.setState((s) => {
     const msgs = [...s.messages]
     const last = msgs[msgs.length - 1]

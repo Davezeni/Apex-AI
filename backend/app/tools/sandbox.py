@@ -7,6 +7,48 @@ from typing import Any
 from .base import Tool, ToolContext, ToolResult
 
 
+class SandboxStatusTool(Tool):
+    name = "sandbox_status"
+    description = (
+        "Report the sandbox (isolated execution environment) status: which "
+        "backend is configured and whether it is available, and list any "
+        "listening ports. Use to check where generated code can run."
+    )
+    parameters = {"type": "object", "properties": {}}
+
+    async def execute(self, args: dict[str, Any], ctx: ToolContext) -> ToolResult:
+        del args
+        if ctx.sandbox is None:
+            return ToolResult(
+                ok=False,
+                summary="no sandbox configured",
+                content="No sandbox backend is configured.",
+            )
+
+        available = await ctx.sandbox.available()
+        name = getattr(ctx.sandbox, "name", "unknown")
+
+        ports = ""
+        if available:
+            ports_result = await ctx.sandbox.run_command(
+                "ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null || echo '(port tools unavailable)'",
+                timeout=20.0,
+            )
+            ports = ports_result.stdout
+
+        content = (
+            f"Sandbox backend: {name}\n"
+            f"Available: {available}\n"
+            f"Listening ports:\n{ports or '(none reported)'}"
+        )
+        return ToolResult(
+            ok=available,
+            summary=f"sandbox {name} available={available}",
+            content=content,
+            detail={"backend": name, "available": available, "ports": ports},
+        )
+
+
 class RunCommandTool(Tool):
     name = "run_command"
     description = (
@@ -47,5 +89,10 @@ class RunCommandTool(Tool):
             ok=result.ok,
             summary=f"exit {result.exit_code}",
             content=content,
-            detail={"exit_code": result.exit_code},
+            detail={
+                "exit_code": result.exit_code,
+                "command": cmd,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+            },
         )

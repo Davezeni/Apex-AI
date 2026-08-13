@@ -10,7 +10,9 @@ export default function Chat() {
   const setStreaming = useChat((s) => s.setStreaming)
 
   const [input, setInput] = useState('')
+  const [uploading, setUploading] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const submit = () => {
     const text = input.trim()
@@ -22,6 +24,35 @@ export default function Chat() {
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
     })
+  }
+
+  const upload = async (file: File) => {
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const r = await fetch('/api/workspace/upload', { method: 'POST', body: fd })
+      if (!r.ok) throw new Error(await r.text())
+      addMessage({
+        id: `u${Date.now()}`,
+        role: 'user',
+        text: `📎 Uploaded ${file.name}`,
+        steps: [],
+        files: [],
+        thoughtSeconds: null,
+      })
+    } catch (e) {
+      addMessage({
+        id: `u${Date.now()}`,
+        role: 'user',
+        text: `⚠️ Upload failed: ${file.name}`,
+        steps: [],
+        files: [],
+        thoughtSeconds: null,
+      })
+    } finally {
+      setUploading(false)
+    }
   }
 
   return (
@@ -42,6 +73,28 @@ export default function Chat() {
 
       <form onSubmit={(e) => { e.preventDefault(); submit() }} className="border-t border-border p-3">
         <div className="flex items-end gap-2">
+          {/* File upload button */}
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const files = e.target.files
+              if (files) Array.from(files).forEach((f) => upload(f))
+              e.target.value = ''
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            title="Upload files"
+            className="rounded-xl bg-panel border border-border px-3 py-2.5 text-sm text-muted hover:border-muted hover:text-fg disabled:opacity-40"
+          >
+            {uploading ? '…' : '📎'}
+          </button>
+
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}

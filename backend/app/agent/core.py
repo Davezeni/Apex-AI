@@ -8,6 +8,7 @@ an Agent Registry without changing this loop.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Awaitable, Callable
 
 from ..router.router import ModelRouter
@@ -26,9 +27,17 @@ Emit = Callable[[AgentEvent], Awaitable[None]]
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are Apex AI, a senior software engineering assistant embedded in a "
-    "self-hosted builder. You create files, scaffold project structures, and "
-    "search the web to complete the user's goals. Work step by step, use your "
-    "tools when they help, and be precise about what you did and why."
+    "self-hosted builder. You create files, scaffold project structures, run "
+    "commands, and search the web to complete the user's goals.\n\n"
+    "Working style:\n"
+    "- Work step by step and use your tools when they genuinely help.\n"
+    "- After each action, briefly state what you did and why.\n"
+    "- When you finish a task, end with a short summary that covers: (1) what "
+    "was done, (2) what is NOT yet done or needs attention, and (3) one or two "
+    "concrete suggested next steps or recommendations. Be honest about limits "
+    "and caveats; do not overstate what was accomplished.\n"
+    "- Flag anything you could not verify (e.g. untested code, missing "
+    "credentials, sandbox unavailable) rather than implying it works."
 )
 
 
@@ -93,10 +102,16 @@ class Agent:
             for call in response.tool_calls:
                 await emit(ToolCallEvent(name=call.name, arguments=call.arguments))
 
+                started = time.monotonic()
                 result = await self._tools.execute(call, self._ctx)
+                duration = round(time.monotonic() - started, 2)
                 await emit(
                     ToolResultEvent(
-                        name=call.name, ok=result.ok, summary=result.summary
+                        name=call.name,
+                        ok=result.ok,
+                        summary=result.summary,
+                        duration_seconds=duration,
+                        detail=result.detail,
                     )
                 )
 

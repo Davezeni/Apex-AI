@@ -3,7 +3,7 @@
 export type AgentEvent =
   | { type: 'TextDelta'; delta: string }
   | { type: 'ToolCallEvent'; name: string; arguments: Record<string, unknown> }
-  | { type: 'ToolResultEvent'; name: string; ok: boolean; summary: string }
+  | { type: 'ToolResultEvent'; name: string; ok: boolean; summary: string; durationSeconds: number; detail: Record<string, unknown> }
   | { type: 'Done'; text: string }
   | { type: 'Error'; message: string }
 
@@ -17,6 +17,8 @@ export interface ToolStep {
   name: string
   ok: boolean
   summary: string
+  durationSeconds: number
+  detail: Record<string, unknown>
 }
 
 export interface ChatMessage {

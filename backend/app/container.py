@@ -42,7 +42,7 @@ from .tools.github import (
 from .tools.image_gen import GenerateImageTool
 from .tools.knowledge import KnowledgeAddTool, KnowledgeQueryTool
 from .tools.registry import ToolContext, ToolRegistry
-from .tools.sandbox import RunCommandTool
+from .tools.sandbox import RunCommandTool, SandboxStatusTool
 from .tools.vision import DescribeImageTool, OcrImageTool
 from .tools.web_search import DuckDuckGoBackend, TavilyBackend, WebSearchTool
 from .tools.workspace import WorkspaceProtectTool
@@ -144,6 +144,7 @@ def build_tools(
         ParseDocumentTool(),
         ConvertFileTool(),
         RunCommandTool(),
+        SandboxStatusTool(),
         GitHubCreateRepoTool(),
         GitCloneTool(),
         GitCommitTool(),
