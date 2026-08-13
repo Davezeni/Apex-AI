@@ -75,15 +75,22 @@ class Settings(BaseSettings):
     codespace_name: str = ""         # required when sandbox_backend == "codespaces"
 
     # --- Model pool (overridable via config.yaml) ---
-    # Ordered for round-robin: three fast Groq models first (spread across
-    # different strengths: general, strong reasoning, coding), then Gemini
-    # (multimodal + fallback), then local Ollama as the unlimited floor.
+    # Round-robin across a diverse free pool (all verified working):
+    #  - Groq: fast general (llama-3.3-70b, llama-3.1-8b), reasoning
+    #    (gpt-oss-120b, gpt-oss-20b, qwen3.6-27b), coding (compound).
+    #  - Gemini: multimodal + fast lite variants.
+    #  - Ollama: local unlimited fallback (disabled on hosts without it).
     pool: list[PoolEntry] = Field(
         default_factory=lambda: [
             PoolEntry(provider="groq", model="llama-3.3-70b-versatile", priority=1),
             PoolEntry(provider="groq", model="openai/gpt-oss-120b", priority=1),
             PoolEntry(provider="groq", model="qwen/qwen3.6-27b", priority=1),
+            PoolEntry(provider="groq", model="groq/compound", priority=1),
+            PoolEntry(provider="groq", model="openai/gpt-oss-20b", priority=1),
+            PoolEntry(provider="groq", model="llama-3.1-8b-instant", priority=1),
+            PoolEntry(provider="gemini", model="gemini-3.6-flash", priority=2),
             PoolEntry(provider="gemini", model="gemini-3.5-flash", priority=2),
+            PoolEntry(provider="gemini", model="gemini-3.5-flash-lite", priority=2),
             PoolEntry(provider="ollama", model="qwen2.5:14b", priority=9),
         ]
     )

@@ -14,7 +14,12 @@ models:
     - { provider: groq,   model: "llama-3.3-70b-versatile", priority: 1 }
     - { provider: groq,   model: "openai/gpt-oss-120b",     priority: 1 }
     - { provider: groq,   model: "qwen/qwen3.6-27b",        priority: 1 }
+    - { provider: groq,   model: "groq/compound",           priority: 1 }
+    - { provider: groq,   model: "openai/gpt-oss-20b",      priority: 1 }
+    - { provider: groq,   model: "llama-3.1-8b-instant",    priority: 1 }
+    - { provider: gemini, model: "gemini-3.6-flash",        priority: 2 }
     - { provider: gemini, model: "gemini-3.5-flash",        priority: 2 }
+    - { provider: gemini, model: "gemini-3.5-flash-lite",   priority: 2 }
     - { provider: ollama, model: "qwen2.5:14b",             priority: 9 }
 
 agent:
