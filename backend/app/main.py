@@ -31,7 +31,7 @@ from .container import (
     build_tools,
 )
 
-from .router.schema import Message  # noqa: F401  (kept for potential reuse)
+from .router.schema import Message
 from .workspace.protect import WorkspaceProtection
 
 settings = load_settings()
@@ -73,6 +73,20 @@ def _event_to_dict(event) -> dict:
     data = {"type": event.__class__.__name__}
     data.update({f: getattr(event, f) for f in event.__dataclass_fields__})
     return data
+
+
+def _history_for(cid: str, limit: int = 20) -> list[Message]:
+    """Rebuild a model-ready history from a conversation's persisted messages.
+
+    Only plain user/assistant text is included (tool internals are skipped),
+    so the model gets clean conversational context without its own tool
+    plumbing bloating the prompt.
+    """
+    history: list[Message] = []
+    for m in store.list_messages(cid)[-limit:]:
+        if m["role"] in ("user", "assistant") and m["kind"] == "text" and m["content"].strip():
+            history.append(Message(role=m["role"], content=m["content"]))
+    return history
 
 
 # --------------------------------------------------------------------------- #
@@ -122,8 +136,28 @@ async def ws_chat(ws: WebSocket) -> None:
         while True:
             data = await ws.receive_json()
             message = data.get("message")
-            if isinstance(message, str) and message.strip():
-                await agent.run(message, emit=emit)
+            if not isinstance(message, str) or not message.strip():
+                continue
+
+            # Persistent memory: load the conversation's history, then save the
+            # user + assistant turns so the model remembers context across turns.
+            cid = data.get("conversation_id")
+            history = _history_for(cid) if cid else None
+
+            if cid:
+                store.add_message(cid, "user", message)
+
+            answer: list[str] = []
+
+            async def emit2(event) -> None:
+                await emit(event)
+                if isinstance(event, Done):
+                    answer.append(event.text)
+
+            await agent.run(message, history=history, emit=emit2)
+
+            if cid:
+                store.add_message(cid, "assistant", "".join(answer))
     except WebSocketDisconnect:
         pass
 

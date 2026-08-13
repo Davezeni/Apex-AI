@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { useChat } from './stores/useChat'
+import { setConversationId } from './lib/ws'
 import Header from './components/Header'
 import Sidebar from './components/Sidebar'
 import Chat from './components/Chat'
@@ -19,6 +21,26 @@ export default function App() {
   const sidebarCollapsed = useChat((s) => s.sidebarCollapsed)
   const mobileMenuOpen = useChat((s) => s.mobileMenuOpen)
   const setMobileMenu = useChat((s) => s.setMobileMenu)
+
+  // Ensure a conversation exists so the backend can persist memory.
+  useEffect(() => {
+    fetch('/api/conversations')
+      .then((r) => r.json())
+      .then((convs: { id: string }[]) => {
+        if (convs.length > 0) {
+          setConversationId(convs[0].id)
+        } else {
+          fetch('/api/conversations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: 'New conversation' }),
+          })
+            .then((r) => r.json())
+            .then((c: { id: string }) => setConversationId(c.id))
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   return (
     <div className="flex h-full flex-col bg-deep">
