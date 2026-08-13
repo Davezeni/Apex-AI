@@ -69,11 +69,26 @@ class ModelRouter:
         self,
         req: GenerateRequest,
         on_delta: DeltaCallback = None,
+        prefer_models: list[str] | None = None,
     ) -> GenerateResponse:
+        """Generate a response.
+
+        `prefer_models` (optional) biases selection toward the named models
+        (matched by model id) so a task can use the models best at it, while
+        still failing over across the whole pool.
+        """
         now = time.monotonic()
         ordered = self._ordered(self._available(now))
         if not ordered:
             raise AllModelsExhausted("all models are in cooldown")
+
+        # Reorder: preferred models first (in preference order), then the rest.
+        if prefer_models:
+            pref_map = {m: i for i, m in enumerate(prefer_models)}
+            ordered = sorted(
+                ordered,
+                key=lambda e: (pref_map.get(e.model, len(pref_map)), self._pool.index(e)),
+            )
 
         errors: list[str] = []
         attempts = len(ordered)

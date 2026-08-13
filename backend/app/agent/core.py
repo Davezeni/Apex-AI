@@ -23,6 +23,7 @@ from .events import (
     ToolCallEvent,
     ToolResultEvent,
 )
+from .tasks import classify, persona_for, preferred_models
 
 Emit = Callable[[AgentEvent], Awaitable[None]]
 
@@ -76,12 +77,21 @@ class Agent:
         history: list[Message] | None = None,
         emit: Emit | None = None,
     ) -> None:
-        """Run one turn, emitting events as the agent thinks and acts."""
+        """Run one turn, emitting events as the agent thinks and acts.
+
+        Task classification picks the persona (human-like chat vs. rigorous
+        engineer) and the preferred models (best model for code/math/design/
+        data) while the router still fails over across the whole pool.
+        """
 
         emit = emit or _noop
 
+        task = classify(user_message)
+        persona = persona_for(task.kind)
+        prefer = preferred_models(task.kind)
+
         messages: list[Message] = [
-            Message(role="system", content=self._system_prompt),
+            Message(role="system", content=persona),
             *(history or []),
             Message(role="user", content=user_message),
         ]
@@ -96,6 +106,7 @@ class Agent:
             response = await self._router.generate(
                 GenerateRequest(messages=messages, tools=self._tools.definitions()),
                 on_delta=on_delta,
+                prefer_models=prefer,
             )
 
             # Emit the model's reasoning/thinking if it produced any.
