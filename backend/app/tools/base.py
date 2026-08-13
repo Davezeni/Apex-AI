@@ -24,9 +24,16 @@ class ToolError(Exception):
 
 @dataclass
 class ToolContext:
-    """Runtime dependencies handed to every tool."""
+    """Runtime dependencies handed to every tool.
+
+    Optional collaborators (sandbox, GitHub client, knowledge base) are
+    `None` when not configured; tools must degrade gracefully in that case.
+    """
 
     workspace_root: Path
+    sandbox: Any = None
+    github: Any = None
+    knowledge: Any = None
 
 
 class Tool(ABC):

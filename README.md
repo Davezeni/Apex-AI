@@ -58,17 +58,40 @@ Full details in [`docs/`](docs/):
 
 ## 🚀 Quick start
 
-> Coming with Layer 1. The target experience is:
-
 ```bash
-git clone https://github.com/you/apex-ai.git
-cd apex-ai
-cp config.example.yaml config.yaml      # add free API keys (optional)
-docker compose up                        # everything on one command
+git clone https://github.com/Davezeni/Apex-AI.git
+cd Apex-AI
+cp .env.example .env              # add free API keys (optional)
+cp config.example.yaml config.yaml
+docker compose up                  # backend + frontend (+ optional ollama/sandbox)
 # open http://localhost:3000
 ```
 
-**No API keys?** No problem — run with local Ollama only (`ollama pull qwen2.5:14b`) and Apex AI works fully offline and privately.
+**No API keys?** Run with local Ollama only (`ollama pull qwen2.5:14b`) and Apex AI works fully offline and privately. Development without Docker:
+
+```bash
+cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload
+cd frontend && npm install && npm run dev
+```
+
+## ✅ What's built (Layer 1 core)
+
+| Area | Status |
+|------|--------|
+| Agent loop (reason → act → observe) with streaming events | ✅ |
+| Multi-model router (Groq/Gemini/Ollama; round-robin + failover + cooldown) | ✅ unit-tested |
+| Filesystem tools (create/read/edit/delete/list/scaffold, traversal-guarded) | ✅ unit-tested |
+| Sandbox abstraction (Docker + Codespaces backends) | ✅ (needs live host to verify) |
+| Web search (DuckDuckGo keyless + Tavily) | ✅ |
+| GitHub (create repo, clone/commit/push/pull) | ✅ (needs live PAT) |
+| Knowledge base / RAG (pluggable embedder, offline hash + Ollama) | ✅ unit-tested |
+| Document conversion (csv/xlsx/docx/md/html/json ↔ Markdown) | ✅ unit-tested |
+| Conversation persistence (SQLite) + workspace export/upload | ✅ |
+| WebSocket + HTTP chat, REST API | ✅ |
+| Frontend (React/Vite/Tailwind, mobile-first, chat/code/preview) | ✅ builds clean |
+| Docker Compose + Dockerfiles | ✅ |
+
+**Not yet built (next increments):** live model smoke test, PDF/PPTX read-write, image generation, vision/OCR wiring, charts, document-authoring templates, Codespaces REST integration, multi-agent layer.
 
 ## 🧠 Model pool (configurable)
 
@@ -107,7 +130,7 @@ Model IDs are config-driven because providers update catalogs often. Local Ollam
 
 ## 🙌 Status
 
-**Phase:** Design complete — documentation baseline delivered (v1.1). Next: build Layer 1.
+**Phase:** Layer 1 core built and unit-tested (16 tests passing). Backend (FastAPI agent + router + tools + persistence + RAG + conversion), frontend (React, mobile-first), and Docker Compose deployment are in place. Live model inference, sandbox execution, and GitHub operations still need a host-side smoke test with real credentials.
 
 ---
 

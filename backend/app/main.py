@@ -1,17 +1,19 @@
-"""FastAPI application: health, HTTP chat, and WebSocket streaming endpoints.
+"""FastAPI application: health, chat (HTTP + WebSocket), conversations,
+workspace, and knowledge endpoints.
 
-- `/health`        — liveness/readiness + which providers are configured.
-- `/api/chat`      — one stateless turn, returns the full event list (JSON).
-- `/ws/chat`       — streaming turn(s) over WebSocket; the agent emits events
-                     (text deltas, tool calls/results, done/error) live.
-
-Conversation persistence (memory layer) is a later increment; both endpoints
-are currently stateless per turn.
+Layer 1 wires the full tool set (filesystem, sandbox, GitHub, knowledge,
+document conversion, web search) behind the agent loop. Live inference and
+sandbox/GitHub calls require a configured environment (keys, Docker, token).
 """
 
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+import tempfile
+import zipfile
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .agent.core import Agent
@@ -19,7 +21,11 @@ from .agent.events import Done, Error
 from .config import load_settings
 from .container import (
     build_adapters,
+    build_github,
+    build_knowledge,
     build_router,
+    build_sandbox,
+    build_store,
     build_tool_context,
     build_tools,
 )
@@ -27,12 +33,20 @@ from .container import (
 settings = load_settings()
 adapters = build_adapters(settings)
 router = build_router(settings, adapters)
+store = build_store(settings)
+knowledge = build_knowledge(settings)
+github = build_github(settings)
+sandbox = build_sandbox(settings)
 tools = build_tools(settings)
-ctx = build_tool_context(settings)
+ctx = build_tool_context(settings, github=github, sandbox=sandbox, knowledge=knowledge)
 agent = Agent(router, tools, ctx, max_iterations=settings.max_iterations)
 
-app = FastAPI(title="Apex AI", version="0.2.0")
+app = FastAPI(title="Apex AI", version="0.3.0")
 
+
+# --------------------------------------------------------------------------- #
+# Schemas
+# --------------------------------------------------------------------------- #
 
 class ChatRequest(BaseModel):
     message: str
@@ -43,11 +57,19 @@ class ChatResponse(BaseModel):
     answer: str
 
 
+class ConversationCreate(BaseModel):
+    title: str = "New conversation"
+
+
 def _event_to_dict(event) -> dict:
     data = {"type": event.__class__.__name__}
     data.update({f: getattr(event, f) for f in event.__dataclass_fields__})
     return data
 
+
+# --------------------------------------------------------------------------- #
+# Health
+# --------------------------------------------------------------------------- #
 
 @app.get("/health")
 async def health() -> dict:
@@ -55,8 +77,14 @@ async def health() -> dict:
         "status": "ok",
         "providers": list(adapters),
         "pool": [e.model for e in router._pool],  # noqa: SLF001
+        "github": github is not None,
+        "sandbox": sandbox is not None,
     }
 
+
+# --------------------------------------------------------------------------- #
+# Chat
+# --------------------------------------------------------------------------- #
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest) -> ChatResponse:
@@ -90,3 +118,108 @@ async def ws_chat(ws: WebSocket) -> None:
                 await agent.run(message, emit=emit)
     except WebSocketDisconnect:
         pass
+
+
+# --------------------------------------------------------------------------- #
+# Conversations (persistence)
+# --------------------------------------------------------------------------- #
+
+@app.get("/api/conversations")
+async def list_conversations() -> list[dict]:
+    return store.list_conversations()
+
+
+@app.post("/api/conversations")
+async def create_conversation(req: ConversationCreate) -> dict:
+    return store.create_conversation(req.title)
+
+
+@app.get("/api/conversations/{cid}")
+async def get_conversation(cid: str) -> dict:
+    conv = store.get_conversation(cid)
+    if conv is None:
+        raise HTTPException(status_code=404, detail="conversation not found")
+    conv["messages"] = store.list_messages(cid)
+    return conv
+
+
+@app.delete("/api/conversations/{cid}")
+async def delete_conversation(cid: str) -> dict:
+    store.delete_conversation(cid)
+    return {"ok": True}
+
+
+@app.post("/api/conversations/{cid}/messages")
+async def add_message(cid: str, req: ChatRequest) -> dict:
+    if store.get_conversation(cid) is None:
+        raise HTTPException(status_code=404, detail="conversation not found")
+    store.add_message(cid, "user", req.message)
+    # Run the agent and persist the assistant reply (text messages only).
+    answer_parts: list[str] = []
+
+    async def emit(event) -> None:
+        if isinstance(event, Done):
+            answer_parts.append(event.text)
+
+    await agent.run(req.message, emit=emit)
+    answer = "".join(answer_parts)
+    store.add_message(cid, "assistant", answer)
+    return {"answer": answer}
+
+
+# --------------------------------------------------------------------------- #
+# Workspace (file tree + export)
+# --------------------------------------------------------------------------- #
+
+@app.get("/api/workspace/tree")
+async def workspace_tree() -> list[str]:
+    root = settings.workspace_root
+    if not root.exists():
+        return []
+    return [str(p.relative_to(root)) for p in sorted(root.rglob("*"))]
+
+
+@app.get("/api/workspace/file")
+async def workspace_file(path: str) -> dict:
+    target = (settings.workspace_root / path).resolve()
+    if not target.is_relative_to(settings.workspace_root.resolve()):
+        raise HTTPException(status_code=400, detail="path escapes workspace")
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="file not found")
+    return {"path": path, "content": target.read_text(encoding="utf-8", errors="replace")}
+
+
+@app.get("/api/workspace/export")
+async def workspace_export() -> FileResponse:
+    tmp = Path(tempfile.mkdtemp()) / "workspace.zip"
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zf:
+        for p in settings.workspace_root.rglob("*"):
+            if p.is_file():
+                zf.write(p, p.relative_to(settings.workspace_root))
+    return FileResponse(tmp, media_type="application/zip", filename="workspace.zip")
+
+
+@app.post("/api/workspace/upload")
+async def workspace_upload(file: UploadFile) -> dict:
+    data = await file.read()
+    target = settings.workspace_root / Path(file.filename or "upload").name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(data)
+    return {"path": str(target.relative_to(settings.workspace_root))}
+
+
+# --------------------------------------------------------------------------- #
+# Knowledge
+# --------------------------------------------------------------------------- #
+
+class KnowledgeAdd(BaseModel):
+    source: str
+    text: str
+
+
+@app.post("/api/knowledge")
+async def knowledge_add(req: KnowledgeAdd) -> dict:
+    import uuid
+
+    n = await knowledge.add(str(uuid.uuid4()), req.source, req.text)
+    return {"chunks": n}
