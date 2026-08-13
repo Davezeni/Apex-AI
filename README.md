@@ -74,6 +74,13 @@ cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload
 cd frontend && npm install && npm run dev
 ```
 
+**On mobile / no local Docker?** The sandbox can run on GitHub's cloud instead:
+1. Install the GitHub CLI and sign in (`gh auth login`).
+2. Create a Codespace for this repo (`gh codespace create --repo Davezeni/Apex-AI`).
+3. Set `SANDBOX_BACKEND=codespaces` and `CODESPACE_NAME=<name>` in `.env`.
+
+The backend itself still needs a host — run it in that Codespace, or deploy to a free VM (see Roadmap, Layer 1 deployment).
+
 ## ✅ What's built (Layer 1 core)
 
 | Area | Status |
