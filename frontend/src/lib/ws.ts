@@ -55,6 +55,9 @@ export function connect() {
           detail: event.detail,
         })
         break
+      case 'Review':
+        setReview(event.text)
+        break
       case 'Done':
         if (turnStart) store.setThought(Math.max(1, Math.round((Date.now() - turnStart) / 1000)))
         store.finishMessage()
@@ -81,6 +84,16 @@ function replaceLastStep(step: ToolStep) {
     const steps = [...last.steps]
     if (steps.length > 0) steps[steps.length - 1] = step
     msgs[msgs.length - 1] = { ...last, steps }
+    return { messages: msgs }
+  })
+}
+
+function setReview(text: string) {
+  useChat.setState((s) => {
+    const msgs = [...s.messages]
+    const last = msgs[msgs.length - 1]
+    if (!last || last.role !== 'assistant') return { messages: msgs }
+    msgs[msgs.length - 1] = { ...last, review: text }
     return { messages: msgs }
   })
 }

@@ -40,8 +40,15 @@ class Done:
 
 
 @dataclass(frozen=True)
+class Review:
+    """A critique of the work, produced by a separate reviewer agent."""
+
+    text: str
+
+
+@dataclass(frozen=True)
 class Error:
     message: str
 
 
-AgentEvent = TextDelta | Thinking | ToolCallEvent | ToolResultEvent | Done | Error
+AgentEvent = TextDelta | Thinking | ToolCallEvent | ToolResultEvent | Done | Review | Error

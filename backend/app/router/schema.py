@@ -26,6 +26,9 @@ class ToolCall:
     id: str
     name: str
     arguments: dict[str, Any]
+    # Gemini 3.x thinking-mode requires echoing back this signature on the
+    # functionCall part. Preserved so multi-turn tool use works.
+    thought_signature: str | None = None
 
 
 @dataclass

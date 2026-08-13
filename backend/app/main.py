@@ -19,7 +19,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .agent.core import Agent
-from .agent.events import Done, Error
+from .agent.events import Done, Error, Review
+from .agent.orchestrator import Orchestrator
 from .config import ROOT_DIR, load_settings
 from .container import (
     build_adapters,
@@ -45,6 +46,7 @@ sandbox = build_sandbox(settings)
 tools = build_tools(settings)
 ctx = build_tool_context(settings, github=github, sandbox=sandbox, knowledge=knowledge)
 agent = Agent(router, tools, ctx, max_iterations=settings.max_iterations)
+orchestrator = Orchestrator(router, tools, ctx, max_iterations=settings.max_iterations)
 
 # Workspace protection: keep the workspace lean by excluding artifacts.
 protection = WorkspaceProtection(settings.workspace_root)
@@ -127,7 +129,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
             answer = event.text
         events.append(_event_to_dict(event))
 
-    await agent.run(req.message, emit=emit)
+    await orchestrator.run(req.message, emit=emit)
     return ChatResponse(events=events, answer=answer)
 
 
@@ -160,7 +162,7 @@ async def ws_chat(ws: WebSocket) -> None:
                 if isinstance(event, Done):
                     answer.append(event.text)
 
-            await agent.run(message, history=history, emit=emit2)
+            await orchestrator.run(message, history=history, emit=emit2)
 
             if cid:
                 store.add_message(cid, "assistant", "".join(answer))
@@ -209,7 +211,7 @@ async def add_message(cid: str, req: ChatRequest) -> dict:
         if isinstance(event, Done):
             answer_parts.append(event.text)
 
-    await agent.run(req.message, emit=emit)
+    await orchestrator.run(req.message, emit=emit)
     answer = "".join(answer_parts)
     store.add_message(cid, "assistant", answer)
     return {"answer": answer}

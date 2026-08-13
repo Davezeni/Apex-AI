@@ -17,10 +17,13 @@ class ToolRegistry:
             raise ValueError(f"duplicate tool name: {tool.name!r}")
         self._tools[tool.name] = tool
 
-    def definitions(self) -> list[ToolDef]:
+    def definitions(self, allow: set[str] | None = None) -> list[ToolDef]:
+        tools = self._tools.values()
+        if allow is not None:
+            tools = [t for t in tools if t.name in allow]
         return [
             ToolDef(name=t.name, description=t.description, parameters=t.parameters)
-            for t in self._tools.values()
+            for t in tools
         ]
 
     async def execute(self, call: ToolCall, ctx: ToolContext) -> ToolResult:

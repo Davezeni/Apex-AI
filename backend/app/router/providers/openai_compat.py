@@ -108,7 +108,10 @@ class OpenAICompatAdapter(ProviderAdapter):
                     if data == "[DONE]":
                         break
                     chunk = json.loads(data)
-                    delta = chunk["choices"][0].get("delta") or {}
+                    choices = chunk.get("choices")
+                    if not choices:
+                        continue  # usage/error chunk with no choices
+                    delta = choices[0].get("delta") or {}
 
                     if delta.get("reasoning"):
                         reasoning_parts.append(delta["reasoning"])

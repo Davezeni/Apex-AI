@@ -1,9 +1,9 @@
 """The agent loop: reason → act → observe → repeat.
 
-A single-agent implementation that emits events through a callback so the
-caller (WebSocket, HTTP, or CLI) receives streaming text deltas and step
-events in real time. Structured so additional agents can be added later via
-an Agent Registry without changing this loop.
+A single loop that can run as any specialist (via a Specialist config) — the
+persona, tool subset, and preferred models are all parameterized. RAG
+auto-retrieval grounds answers in the user's knowledge base before the first
+model call. Structured so an orchestrator can run multiple specialists.
 """
 
 from __future__ import annotations
@@ -23,29 +23,14 @@ from .events import (
     ToolCallEvent,
     ToolResultEvent,
 )
-from .tasks import classify, persona_for, preferred_models
+from .specialists import Specialist, classify_and_pick
 
 Emit = Callable[[AgentEvent], Awaitable[None]]
 
 DEFAULT_SYSTEM_PROMPT = (
-    "You are Apex AI, a senior software engineer embedded in a self-hosted "
-    "builder. You build real, working software projects, not just snippets.\n\n"
-    "When the user asks you to build an app, website, API, or service:\n"
-    "1. PLAN first: state the structure you'll create in one or two lines.\n"
-    "2. SCAFFOLD a proper project structure using create_structure — e.g. "
-    "src/, a main entry file, README.md, config files, and a sensible folder "
-    "layout for the chosen language.\n"
-    "3. Write each file with write_file, keeping code complete and runnable.\n"
-    "4. If a sandbox is available, run and verify with run_command; otherwise "
-    "state clearly that it is untested.\n"
-    "5. Explain what you built, how to run it, and what a user should see.\n\n"
-    "Memory: you have access to the prior conversation history. Refer back to "
-    "what the user said earlier and build on it — do not forget earlier "
-    "context or re-ask what was already decided.\n\n"
-    "Language: when not specified, choose the most appropriate language for "
-    "the task (Python for data/APIs, JS/TS for web, etc.) and say why.\n\n"
-    "Honesty: end with (1) what was DONE, (2) what is NOT done or untested, "
-    "and (3) concrete next steps. Never imply unverified work succeeded."
+    "You are Apex AI, a capable assistant embedded in a self-hosted builder. "
+    "Work step by step, use tools when they help, and be honest about what "
+    "you did and could not verify."
 )
 
 
@@ -64,64 +49,106 @@ class Agent:
         *,
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
         max_iterations: int = 12,
+        auto_rag: bool = True,
     ) -> None:
         self._router = router
         self._tools = tools
         self._ctx = ctx
         self._system_prompt = system_prompt
         self._max_iterations = max_iterations
+        self._auto_rag = auto_rag
+
+    async def _retrieve_knowledge(self, user_message: str) -> str | None:
+        """Auto-retrieve relevant chunks from the knowledge base, if any."""
+        if not self._auto_rag:
+            return None
+        kb = self._ctx.knowledge
+        if kb is None:
+            return None
+        try:
+            chunks = await kb.query(user_message, top_k=3)
+        except Exception:  # noqa: BLE001
+            return None
+        if not chunks:
+            return None
+        lines = ["Relevant knowledge from the user's documents (use this to ground your answer):"]
+        for c in chunks:
+            lines.append(f"[{c.source}] {c.text}")
+        return "\n\n".join(lines)
 
     async def run(
         self,
         user_message: str,
         history: list[Message] | None = None,
         emit: Emit | None = None,
-    ) -> None:
-        """Run one turn, emitting events as the agent thinks and acts.
+        specialist: Specialist | None = None,
+    ) -> str:
+        """Run one turn as the given specialist (or auto-classified).
 
-        Task classification picks the persona (human-like chat vs. rigorous
-        engineer) and the preferred models (best model for code/math/design/
-        data) while the router still fails over across the whole pool.
+        Returns the final answer text.
         """
-
         emit = emit or _noop
+        specialist = specialist or classify_and_pick(user_message)
 
-        task = classify(user_message)
-        persona = persona_for(task.kind)
-        prefer = preferred_models(task.kind)
+        # Grounding: retrieve relevant knowledge before the first call.
+        knowledge = await self._retrieve_knowledge(user_message)
 
-        messages: list[Message] = [
-            Message(role="system", content=persona),
-            *(history or []),
-            Message(role="user", content=user_message),
-        ]
+        messages: list[Message] = [Message(role="system", content=specialist.persona)]
+        if knowledge:
+            messages.append(Message(role="system", content=knowledge))
+        messages += list(history or [])
+        messages.append(Message(role="user", content=user_message))
+
+        tool_defs = self._tools.definitions(specialist.tool_filter)
+
+        final_text = ""
+        streamed_parts: list[str] = []  # accumulate streamed text across turns
 
         for _ in range(self._max_iterations):
             streamed = {"value": False}
 
             async def on_delta(delta: str) -> None:
                 streamed["value"] = True
+                streamed_parts.append(delta)
                 await emit(TextDelta(delta=delta))
 
             response = await self._router.generate(
-                GenerateRequest(messages=messages, tools=self._tools.definitions()),
+                GenerateRequest(messages=messages, tools=tool_defs),
                 on_delta=on_delta,
-                prefer_models=prefer,
+                prefer_models=specialist.preferred_models or None,
             )
 
-            # Emit the model's reasoning/thinking if it produced any.
             if response.reasoning:
                 await emit(Thinking(text=response.reasoning))
 
             if not response.wants_tools:
-                # Non-streaming providers return the full text without deltas;
-                # emit it once so the client still renders a complete answer.
                 if response.text and not streamed["value"]:
                     await emit(TextDelta(delta=response.text))
-                await emit(Done(text=response.text or ""))
-                return
+                # Prefer the final content; fall back to streamed text, then
+                # to reasoning (some reasoning models put the answer there).
+                final_text = (
+                    response.text
+                    or "".join(streamed_parts).strip()
+                    or response.reasoning
+                    or ""
+                )
+                await emit(Done(text=final_text))
+                return final_text
 
             for call in response.tool_calls:
+                # Guard: never execute a tool outside this specialist's set.
+                if specialist.tool_filter is not None and call.name not in specialist.tool_filter:
+                    await emit(
+                        ToolResultEvent(
+                            name=call.name, ok=False,
+                            summary=f"tool not allowed for {specialist.name}",
+                            duration_seconds=0.0, detail={},
+                        )
+                    )
+                    messages.append(Message(role="assistant", content=None, tool_calls=[call]))
+                    messages.append(Message(role="tool", content="tool not allowed for this specialist", tool_call_id=call.id, name=call.name))
+                    continue
+
                 await emit(ToolCallEvent(name=call.name, arguments=call.arguments))
 
                 started = time.monotonic()
@@ -137,16 +164,10 @@ class Agent:
                     )
                 )
 
+                messages.append(Message(role="assistant", content=None, tool_calls=[call]))
                 messages.append(
-                    Message(role="assistant", content=None, tool_calls=[call])
-                )
-                messages.append(
-                    Message(
-                        role="tool",
-                        content=result.content,
-                        tool_call_id=call.id,
-                        name=call.name,
-                    )
+                    Message(role="tool", content=result.content, tool_call_id=call.id, name=call.name)
                 )
 
         await emit(Error(message=f"stopped after {self._max_iterations} iterations"))
+        return final_text

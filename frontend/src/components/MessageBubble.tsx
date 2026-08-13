@@ -24,8 +24,30 @@ export default function MessageBubble({ message }: Props) {
       {message.files.length > 0 && <EditedFiles files={message.files} />}
       {message.steps.length > 0 && <Steps steps={message.steps} />}
       {message.text && <p className="whitespace-pre-wrap text-sm leading-relaxed text-fg">{message.text}</p>}
+      {message.review && <ReviewBlock text={message.review} />}
       {message.pending && !message.text && <span className="text-muted text-sm animate-pulse">Thinking…</span>}
       {message.error && <p className="text-red-400 text-xs">⚠️ {message.error}</p>}
+    </div>
+  )
+}
+
+function ReviewBlock({ text }: { text: string }) {
+  const [open, setOpen] = useState(true)
+  return (
+    <div className="rounded-lg border border-border bg-deep/40">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-muted hover:text-fg"
+      >
+        <span>🔍</span>
+        <span>Review</span>
+        <span className="ml-auto">{open ? '▾' : '▸'}</span>
+      </button>
+      {open && (
+        <div className="border-t border-border px-3 py-2 text-xs leading-relaxed text-fg/90 whitespace-pre-wrap">
+          {text}
+        </div>
+      )}
     </div>
   )
 }

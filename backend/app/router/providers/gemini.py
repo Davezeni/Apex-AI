@@ -92,10 +92,12 @@ class GeminiAdapter(ProviderAdapter):
                 continue
 
             if m.role == "assistant" and m.tool_calls:
-                parts = [
-                    {"functionCall": {"name": tc.name, "args": tc.arguments}}
-                    for tc in m.tool_calls
-                ]
+                parts = []
+                for tc in m.tool_calls:
+                    fc: dict = {"name": tc.name, "args": tc.arguments}
+                    if tc.thought_signature:
+                        fc["thought_signature"] = tc.thought_signature
+                    parts.append({"functionCall": fc})
                 contents.append({"role": "model", "parts": parts})
                 continue
 
@@ -133,7 +135,12 @@ class GeminiAdapter(ProviderAdapter):
                     fc = part["functionCall"]
                     args = fc.get("args") if isinstance(fc.get("args"), dict) else {}
                     tool_calls.append(
-                        ToolCall(id=fc.get("name", ""), name=fc["name"], arguments=args)
+                        ToolCall(
+                            id=fc.get("name", ""),
+                            name=fc["name"],
+                            arguments=args,
+                            thought_signature=fc.get("thought_signature"),
+                        )
                     )
 
         return GenerateResponse(
