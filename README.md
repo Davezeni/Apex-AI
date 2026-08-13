@@ -57,7 +57,19 @@ Full details in [`docs/`](docs/):
 | [`03-software-design.md`](docs/03-software-design.md) | Detailed low-level design, APIs, data models (SDD) |
 | [`04-preliminary-design-review.md`](docs/04-preliminary-design-review.md) | Decisions, risks, open questions (PDR) |
 
-## 🚀 Quick start
+## 🚀 Deploy (Render, free)
+
+The backend serves both the API and the built frontend, so **one service = one URL**.
+
+1. Push this repo to GitHub (it's already at `Davezeni/Apex-AI`).
+2. On [render.com](https://render.com): **New → Blueprint** → connect your GitHub repo → Render reads `render.yaml` automatically.
+3. Set the three secrets in the dashboard (**Environment → Add from .env** or manual):
+   - `GROQ_API_KEY`, `GEMINI_API_KEY`, `GITHUB_TOKEN`
+4. Deploy. Your app lives at `https://apex-ai.onrender.com` (bookmark it on your phone).
+
+> **Free-tier notes:** the service sleeps after ~15 min idle (first load cold-starts in ~30–60s), and its filesystem (SQLite DB + workspace) is **ephemeral** — it resets on redeploy/restart. For persistence + 24/7 uptime, later move to a free VM (Oracle Always Free).
+
+## 🚀 Quick start (local)
 
 ```bash
 git clone https://github.com/Davezeni/Apex-AI.git

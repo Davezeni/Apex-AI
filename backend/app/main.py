@@ -14,11 +14,12 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .agent.core import Agent
 from .agent.events import Done, Error
-from .config import load_settings
+from .config import ROOT_DIR, load_settings
 from .container import (
     build_adapters,
     build_github,
@@ -247,3 +248,27 @@ async def knowledge_add(req: KnowledgeAdd) -> dict:
 
     n = await knowledge.add(str(uuid.uuid4()), req.source, req.text)
     return {"chunks": n}
+
+
+# --------------------------------------------------------------------------- #
+# Static frontend (SPA) — served when built, so ONE service hosts everything.
+# This is what enables single-origin deployment (Render/VM): the frontend's
+# relative /api and /ws URLs hit this same server with no CORS/proxy config.
+# --------------------------------------------------------------------------- #
+
+FRONTEND_DIST = ROOT_DIR / "frontend" / "dist"
+
+
+if FRONTEND_DIST.exists():
+    app.mount(
+        "/assets",
+        StaticFiles(directory=FRONTEND_DIST / "assets"),
+        name="assets",
+    )
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa(full_path: str) -> FileResponse:
+        candidate = (FRONTEND_DIST / full_path).resolve()
+        if full_path and candidate.is_relative_to(FRONTEND_DIST.resolve()) and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(FRONTEND_DIST / "index.html")

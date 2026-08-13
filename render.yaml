@@ -1,0 +1,26 @@
+# Render Blueprint — deploys Apex AI as a single free web service.
+# The backend serves both the API/WebSocket and the built frontend (SPA),
+# so one service hosts everything at one URL. See render.yaml docs:
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: apex-ai
+    runtime: python
+    plan: free
+    buildCommand: |
+      pip install -r backend/requirements.txt
+      cd frontend && npm install && npm run build && cd ..
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      # Secrets — set these in the Render dashboard (NOT committed).
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: SANDBOX_BACKEND
+        value: docker
