@@ -1,0 +1,19 @@
+# Apex AI — non-secret tunables (secrets live in .env, which is git-ignored).
+# The model pool is the ordered list the router cycles through (round-robin)
+# and fails over across. Lower priority = preferred first in the sequence.
+# Local Ollama should stay the final, unlimited fallback.
+
+models:
+  # Router strategy: "round_robin" (cycle 1→2→…→N→1) or "priority_first"
+  # (always try the best available, fall through only on error).
+  strategy: round_robin
+
+  cooldown_seconds: 60
+
+  pool:
+    - { provider: groq,   model: "llama-3.3-70b-versatile", priority: 1 }
+    - { provider: gemini, model: "gemini-2.5-flash",        priority: 2 }
+    - { provider: ollama, model: "qwen2.5:14b",             priority: 9 }
+
+agent:
+  max_iterations: 12

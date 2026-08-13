@@ -1,0 +1,42 @@
+# ---- Environment & secrets ----
+.env
+.env.*
+!.env.example
+*.local
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# ---- Node / frontend (later) ----
+node_modules/
+.next/
+.out/
+.vite/
+
+# ---- Runtime artifacts ----
+workspace/
+*.sqlite3
+*.sqlite
+*.db
+*.log
+
+# ---- OS / editors ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# TS build info
+*.tsbuildinfo
