@@ -10,7 +10,25 @@ body,
 
 body {
   margin: 0;
-  background: #0f1115;
-  color: #e6e8ee;
+  background: #17130A;
+  color: #E8E6E1;
   font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thin warm scrollbars to match the monochrome theme. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3B342A transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #3B342A;
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
 }

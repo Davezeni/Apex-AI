@@ -15,7 +15,7 @@ export default function Chat() {
   const submit = () => {
     const text = input.trim()
     if (!text || streaming) return
-    addMessage({ id: `u${Date.now()}`, role: 'user', text, steps: [] })
+    addMessage({ id: `u${Date.now()}`, role: 'user', text, steps: [], files: [], thoughtSeconds: null })
     setStreaming(true)
     setInput('')
     sendMessage(text)
@@ -25,14 +25,13 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
+    <div className="flex h-full flex-col bg-surface">
+      <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 && (
-          <div className="flex h-full flex-col items-center justify-center text-center text-neutral-500">
-            <div className="text-3xl mb-2">🛠️</div>
-            <p className="text-sm max-w-xs">
-              Ask Apex AI to build something. It can create files, scaffold projects,
-              and search the web.
+          <div className="flex h-full flex-col items-center justify-center text-center text-muted">
+            <div className="mb-2 text-3xl">🛠️</div>
+            <p className="max-w-xs text-sm">
+              Ask Apex AI to build something. It can create files, scaffold projects, and search the web.
             </p>
           </div>
         )}
@@ -41,31 +40,20 @@ export default function Chat() {
         ))}
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          submit()
-        }}
-        className="border-t border-border p-3"
-      >
+      <form onSubmit={(e) => { e.preventDefault(); submit() }} className="border-t border-border p-3">
         <div className="flex items-end gap-2">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                submit()
-              }
-            }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
             rows={1}
             placeholder="Ask Apex AI…"
-            className="flex-1 resize-none rounded-xl bg-panel border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+            className="flex-1 resize-none rounded-xl bg-panel border border-border px-3 py-2.5 text-sm text-fg placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-muted"
           />
           <button
             type="submit"
             disabled={streaming || !input.trim()}
-            className="rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+            className="rounded-xl bg-panel border border-border px-4 py-2.5 text-sm font-medium text-fg disabled:opacity-40 hover:border-muted"
           >
             Send
           </button>

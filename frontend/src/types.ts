@@ -7,13 +7,27 @@ export type AgentEvent =
   | { type: 'Done'; text: string }
   | { type: 'Error'; message: string }
 
+export interface FileChange {
+  path: string
+  lang: string
+  summary: string
+}
+
+export interface ToolStep {
+  name: string
+  ok: boolean
+  summary: string
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
-  /** streamed assistant text */
   text: string
-  /** tool steps for an assistant message */
-  steps: { name: string; ok: boolean; summary: string }[]
+  steps: ToolStep[]
+  /** files touched by the assistant turn */
+  files: FileChange[]
+  /** thinking duration in seconds (for "Thought for Xs") */
+  thoughtSeconds: number | null
   error?: string
   pending?: boolean
 }

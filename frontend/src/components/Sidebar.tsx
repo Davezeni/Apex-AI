@@ -1,10 +1,7 @@
 import { useChat } from '../stores/useChat'
 
-// Conversation list placeholder — persistence wiring lands in a later increment.
 interface Props {
-  /** When true, render as a narrow icon rail (desktop collapse). */
   collapsed?: boolean
-  /** Hide the collapse/expand toggle (used inside the mobile drawer). */
   hideToggle?: boolean
 }
 
@@ -13,44 +10,55 @@ export default function Sidebar({ collapsed = false, hideToggle = false }: Props
 
   if (collapsed) {
     return (
-      <aside className="hidden md:flex w-14 shrink-0 flex-col items-center border-r border-border bg-panel py-3">
+      <aside className="hidden md:flex w-14 shrink-0 flex-col items-center border-r border-border bg-deep py-3">
         {!hideToggle && (
-          <button
-            onClick={toggleSidebar}
-            title="Expand sidebar"
-            className="rounded-lg p-2 text-neutral-400 hover:bg-surface hover:text-white"
-          >
-            ▸
-          </button>
+          <button onClick={toggleSidebar} className="rounded-lg p-2 text-muted hover:bg-surface hover:text-fg">▸</button>
         )}
-        <div className="mt-3 flex flex-col gap-2 text-lg">
-          <span title="New conversation">＋</span>
-          <span title="Conversations">💬</span>
-        </div>
       </aside>
     )
   }
 
   return (
-    <aside className={`flex h-full shrink-0 flex-col border-r border-border bg-panel ${hideToggle ? 'w-full' : 'w-60'}`}>
+    <aside className={`flex h-full shrink-0 flex-col border-r border-border bg-deep ${hideToggle ? 'w-full' : 'w-60'}`}>
+      {/* Brand */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <span className="text-accent text-lg font-bold">Apex AI</span>
+        <span className="text-fg text-base font-semibold">Apex AI</span>
         {!hideToggle && (
-          <button
-            onClick={toggleSidebar}
-            title="Collapse sidebar"
-            className="rounded-lg p-1 text-neutral-400 hover:bg-surface hover:text-white"
-          >
-            ◂
-          </button>
+          <button onClick={toggleSidebar} className="rounded-lg p-1 text-muted hover:bg-surface hover:text-fg">◂</button>
         )}
       </div>
-      <button className="mx-3 mt-3 rounded-lg border border-border bg-surface px-3 py-2 text-sm hover:border-accent">
-        + New conversation
-      </button>
-      <div className="flex-1 overflow-y-auto p-3 text-sm text-neutral-500">
-        <p className="text-xs uppercase tracking-wide text-neutral-600">Conversations</p>
-        <p className="mt-2 text-xs">(coming soon)</p>
+
+      {/* Primary actions */}
+      <div className="space-y-1 p-3">
+        <button className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-left text-sm text-fg hover:border-muted">
+          + New Chat
+        </button>
+        <button className="w-full rounded-lg px-3 py-2 text-left text-sm text-muted hover:bg-surface">
+          🏆 Leaderboard
+        </button>
+        <button className="w-full rounded-lg px-3 py-2 text-left text-sm text-muted hover:bg-surface">
+          🔍 Search
+        </button>
+      </div>
+
+      <div className="border-t border-border" />
+
+      {/* Conversation groups */}
+      <div className="flex-1 overflow-y-auto p-3">
+        <p className="text-[11px] uppercase tracking-wide text-muted">Today</p>
+        <div className="mt-2 space-y-1">
+          <button className="w-full truncate rounded-lg px-3 py-2 text-left text-sm text-fg/90 hover:bg-surface">
+            Hey how can I create an AI app...
+          </button>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-border p-3">
+        <p className="truncate text-xs text-muted">user@example.com</p>
+        <p className="mt-2 text-[10px] text-muted/60">
+          Terms of Use · Privacy Policy · Cookies
+        </p>
       </div>
     </aside>
   )
