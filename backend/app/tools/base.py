@@ -26,14 +26,17 @@ class ToolError(Exception):
 class ToolContext:
     """Runtime dependencies handed to every tool.
 
-    Optional collaborators (sandbox, GitHub client, knowledge base) are
-    `None` when not configured; tools must degrade gracefully in that case.
+    Optional collaborators (sandbox, GitHub client, knowledge base, vision,
+    image generator) are `None` when not configured; tools must degrade
+    gracefully in that case.
     """
 
     workspace_root: Path
     sandbox: Any = None
     github: Any = None
     knowledge: Any = None
+    vision: Any = None
+    image_gen: Any = None
 
 
 class Tool(ABC):

@@ -94,13 +94,17 @@ The backend itself still needs a host — run it in that Codespace, or deploy to
 | GitHub (create repo, clone/commit/push/pull) | ✅ (needs live PAT) |
 | Knowledge base / RAG (pluggable embedder, offline hash + Ollama) | ✅ unit-tested |
 | Document conversion (csv/xlsx/docx/md/html/json ↔ Markdown) | ✅ unit-tested |
+| Image generation (Pollinations, keyless) | ✅ live-verified |
+| Vision + OCR (Gemini vision, describe + extract text) | ✅ live-verified |
+| Charts (matplotlib: bar/line/pie/scatter/hist) | ✅ unit-tested |
+| Document authoring (SAD/SDD/PRD/README templates) | ✅ unit-tested |
 | Workspace protection (auto-exclude artifacts, `.apexignore`, size report) | ✅ unit-tested |
 | Conversation persistence (SQLite) + workspace export/upload | ✅ |
 | WebSocket + HTTP chat, REST API | ✅ |
 | Frontend (React/Vite/Tailwind, mobile-first, chat/code/preview) | ✅ builds clean |
 | Docker Compose + Dockerfiles | ✅ |
 
-**Not yet built (next increments):** live model smoke test, PDF/PPTX read-write, image generation, vision/OCR wiring, charts, document-authoring templates, Codespaces REST integration, multi-agent layer.
+**Not yet built (next increments):** PDF/PPTX read-write, Codespaces REST integration, multi-agent layer, UI polish to match the reference aesthetic.
 
 ## 🧠 Model pool (configurable)
 

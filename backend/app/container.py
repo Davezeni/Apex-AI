@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from .config import Settings, load_settings
 from .integrations.github import GitHubClient
+from .media.image_gen import ImageGenerator
+from .media.vision import VisionClient
 from .memory.rag import HashEmbedder, KnowledgeBase
 from .memory.store import Store
 from .router.providers.base import ProviderAdapter
@@ -19,6 +21,8 @@ from .router.router import ModelRouter, PoolEntry
 from .sandbox.base import Sandbox
 from .sandbox.codespaces import CodespacesSandbox
 from .sandbox.docker import DockerSandbox
+from .tools.author import GenerateDocumentTool
+from .tools.charts import GenerateChartTool
 from .tools.document import ConvertFileTool, ParseDocumentTool
 from .tools.filesystem import (
     CreateStructureTool,
@@ -35,9 +39,11 @@ from .tools.github import (
     GitPullTool,
     GitPushTool,
 )
+from .tools.image_gen import GenerateImageTool
 from .tools.knowledge import KnowledgeAddTool, KnowledgeQueryTool
 from .tools.registry import ToolContext, ToolRegistry
 from .tools.sandbox import RunCommandTool
+from .tools.vision import DescribeImageTool, OcrImageTool
 from .tools.web_search import DuckDuckGoBackend, TavilyBackend, WebSearchTool
 from .tools.workspace import WorkspaceProtectTool
 
@@ -101,6 +107,14 @@ def build_github(settings: Settings) -> GitHubClient | None:
     return GitHubClient(settings.github_token) if settings.github_token else None
 
 
+def build_vision(settings: Settings) -> VisionClient | None:
+    return VisionClient(settings.gemini_api_key) if settings.gemini_api_key else None
+
+
+def build_image_gen(settings: Settings) -> ImageGenerator:
+    return ImageGenerator()
+
+
 def build_sandbox(settings: Settings) -> Sandbox | None:
     """Select the sandbox backend by configuration.
 
@@ -138,8 +152,17 @@ def build_tools(
         KnowledgeAddTool(),
         KnowledgeQueryTool(),
         WorkspaceProtectTool(),
+        GenerateChartTool(),
+        GenerateDocumentTool(),
     ):
         registry.register(tool)
+
+    # Vision tools require a Gemini key; image generation is keyless.
+    vision = build_vision(settings)
+    if vision is not None:
+        registry.register(DescribeImageTool(vision))
+        registry.register(OcrImageTool(vision))
+    registry.register(GenerateImageTool(ImageGenerator()))
 
     backend = (
         TavilyBackend(settings.tavily_api_key)

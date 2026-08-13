@@ -31,10 +31,10 @@ services:
       - ollama
 
   # Sandbox for running generated code (Docker-in-Docker).
+  # Multi-language (Node + Python + Go); see sandbox/Dockerfile.
   sandbox:
-    image: node:20-alpine
+    build: ./sandbox
     container_name: apex-sandbox
-    command: sh -c "apk add --no-cache python3 git && tail -f /dev/null"
     volumes:
       - ./workspace:/workspace
     profiles:
