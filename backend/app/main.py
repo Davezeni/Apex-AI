@@ -30,6 +30,9 @@ from .container import (
     build_tools,
 )
 
+from .router.schema import Message  # noqa: F401  (kept for potential reuse)
+from .workspace.protect import WorkspaceProtection
+
 settings = load_settings()
 adapters = build_adapters(settings)
 router = build_router(settings, adapters)
@@ -40,6 +43,10 @@ sandbox = build_sandbox(settings)
 tools = build_tools(settings)
 ctx = build_tool_context(settings, github=github, sandbox=sandbox, knowledge=knowledge)
 agent = Agent(router, tools, ctx, max_iterations=settings.max_iterations)
+
+# Workspace protection: keep the workspace lean by excluding artifacts.
+protection = WorkspaceProtection(settings.workspace_root)
+protection.ensure_defaults()
 
 app = FastAPI(title="Apex AI", version="0.3.0")
 
@@ -172,11 +179,25 @@ async def add_message(cid: str, req: ChatRequest) -> dict:
 # --------------------------------------------------------------------------- #
 
 @app.get("/api/workspace/tree")
-async def workspace_tree() -> list[str]:
+async def workspace_tree(all: bool = False) -> list[str]:
     root = settings.workspace_root
     if not root.exists():
         return []
-    return [str(p.relative_to(root)) for p in sorted(root.rglob("*"))]
+    entries = []
+    for p in sorted(root.rglob("*")):
+        rel = p.relative_to(root)
+        if not all and protection.excluded(rel):
+            continue
+        entries.append(str(rel))
+    return entries
+
+
+@app.get("/api/workspace/protection")
+async def workspace_protection() -> dict:
+    report = protection.scan()
+    report["included_human"] = WorkspaceProtection.human(report["included_bytes"])
+    report["excluded_human"] = WorkspaceProtection.human(report["excluded_bytes"])
+    return report
 
 
 @app.get("/api/workspace/file")
@@ -195,7 +216,10 @@ async def workspace_export() -> FileResponse:
     with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zf:
         for p in settings.workspace_root.rglob("*"):
             if p.is_file():
-                zf.write(p, p.relative_to(settings.workspace_root))
+                rel = p.relative_to(settings.workspace_root)
+                if protection.excluded(rel):
+                    continue  # skip dependency/build artifacts
+                zf.write(p, rel)
     return FileResponse(tmp, media_type="application/zip", filename="workspace.zip")
 
 

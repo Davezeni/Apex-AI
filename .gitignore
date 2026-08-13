@@ -26,7 +26,8 @@ node_modules/
 .vite/
 
 # ---- Runtime artifacts ----
-workspace/
+# Root workspace dir only (not the backend/app/workspace package).
+/workspace/
 *.sqlite3
 *.sqlite
 *.db

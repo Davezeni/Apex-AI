@@ -27,6 +27,7 @@ Apex AI is a full-stack AI builder you can run anywhere. Chat with an agent that
 - **Data analysis & charts** — analyze anything, and generate bar/line/pie/scatter charts (images or interactive HTML).
 - **Document authoring** — generate SAD, SDD, PRD, README, and presentation decks, with font styling, internal/external links, and cited quotations.
 - **Workspace download** — export any file or the whole workspace as a zip.
+- **Workspace protection** — auto-excludes dependency/build artifacts (`node_modules`, `__pycache__`, `dist`, `vendor`, `target`, etc.) from the file tree and exports, keeping the workspace lean (like a managed agent platform). Maintains an editable `.apexignore` file.
 - **Modern UI** — sidebar, code space (Monaco editor), thinking-step timeline, and in-chat choice questions. **Mobile-first and responsive**: single-pane with bottom-tab navigation (Chat / Code / Preview) on phones, expanding to a multi-pane layout on desktop.
 - **Self-hosted & portable** — runs via a single `docker compose up`; fits on a free-tier VM.
 
@@ -93,6 +94,7 @@ The backend itself still needs a host — run it in that Codespace, or deploy to
 | GitHub (create repo, clone/commit/push/pull) | ✅ (needs live PAT) |
 | Knowledge base / RAG (pluggable embedder, offline hash + Ollama) | ✅ unit-tested |
 | Document conversion (csv/xlsx/docx/md/html/json ↔ Markdown) | ✅ unit-tested |
+| Workspace protection (auto-exclude artifacts, `.apexignore`, size report) | ✅ unit-tested |
 | Conversation persistence (SQLite) + workspace export/upload | ✅ |
 | WebSocket + HTTP chat, REST API | ✅ |
 | Frontend (React/Vite/Tailwind, mobile-first, chat/code/preview) | ✅ builds clean |

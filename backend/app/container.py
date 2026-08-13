@@ -39,6 +39,7 @@ from .tools.knowledge import KnowledgeAddTool, KnowledgeQueryTool
 from .tools.registry import ToolContext, ToolRegistry
 from .tools.sandbox import RunCommandTool
 from .tools.web_search import DuckDuckGoBackend, TavilyBackend, WebSearchTool
+from .tools.workspace import WorkspaceProtectTool
 
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
@@ -136,6 +137,7 @@ def build_tools(
         GitPullTool(),
         KnowledgeAddTool(),
         KnowledgeQueryTool(),
+        WorkspaceProtectTool(),
     ):
         registry.register(tool)
 
