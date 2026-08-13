@@ -12,8 +12,9 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+import httpx
+from fastapi import FastAPI, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -50,6 +51,11 @@ protection = WorkspaceProtection(settings.workspace_root)
 protection.ensure_defaults()
 
 app = FastAPI(title="Apex AI", version="0.3.0")
+
+# Preview state: tracks how the built app is being previewed.
+#   mode: "none" | "static" (serve workspace files, works anywhere) | "server"
+#         (proxy to a dev server running in the sandbox).
+_preview_state: dict = {"mode": "none", "port": None, "url": None}
 
 
 # --------------------------------------------------------------------------- #
@@ -282,6 +288,84 @@ async def knowledge_add(req: KnowledgeAdd) -> dict:
 
     n = await knowledge.add(str(uuid.uuid4()), req.source, req.text)
     return {"chunks": n}
+
+
+# --------------------------------------------------------------------------- #
+# Preview — serve/proxy the app the agent built.
+# --------------------------------------------------------------------------- #
+
+class PreviewStart(BaseModel):
+    command: str = ""
+    port: int = 0
+    mode: str = "static"  # "static" (no sandbox needed) | "server" (sandbox)
+
+
+@app.get("/api/preview")
+async def preview_status() -> dict:
+    base = "/preview"
+    return {
+        "mode": _preview_state["mode"],
+        "url": f"{base}/" if _preview_state["mode"] != "none" else None,
+        "port": _preview_state["port"],
+    }
+
+
+@app.post("/api/preview/start")
+async def preview_start(req: PreviewStart) -> dict:
+    """Point the preview at either the workspace's static files or a running
+    dev server (sandbox required for 'server' mode)."""
+    if req.mode == "server":
+        if sandbox is None or not await sandbox.available():
+            raise HTTPException(status_code=400, detail="sandbox not available (preview needs Docker/Codespaces)")
+        if not req.command or not req.port:
+            raise HTTPException(status_code=400, detail="server mode requires command and port")
+        await sandbox.run_server(req.command, req.port)
+        url = await sandbox.server_url(req.port)
+        _preview_state.update(mode="server", port=req.port, url=url)
+        return {"mode": "server", "url": "/preview/", "port": req.port}
+
+    # Static: serve workspace files directly (works everywhere, incl. Render).
+    _preview_state.update(mode="static", port=None, url=None)
+    return {"mode": "static", "url": "/preview/"}
+
+
+async def _proxy(port: int, path: str, request: Request) -> Response:
+    """Reverse-proxy a request to the sandbox dev server."""
+    target = await sandbox.server_url(port)
+    url = f"{target}/{path}"
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        upstream = await client.request(
+            request.method,
+            url,
+            headers={k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")},
+            content=await request.body(),
+        )
+    return Response(
+        content=upstream.content,
+        status_code=upstream.status_code,
+        headers={"Content-Type": upstream.headers.get("content-type", "text/html")},
+    )
+
+
+@app.api_route("/preview/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def preview(path: str, request: Request):
+    mode = _preview_state["mode"]
+
+    if mode == "server":
+        if sandbox is None:
+            raise HTTPException(status_code=400, detail="sandbox not configured")
+        return await _proxy(_preview_state["port"], path, request)
+
+    if mode == "static":
+        root = settings.workspace_root
+        target = (root / path).resolve()
+        if path == "" or path.endswith("/"):
+            target = (root / (path or "") / "index.html").resolve()
+        if not target.is_relative_to(root.resolve()) or not target.is_file():
+            raise HTTPException(status_code=404, detail="preview file not found (create an index.html or start a server)")
+        return FileResponse(target)
+
+    raise HTTPException(status_code=404, detail="no preview started (create a web app, or call /api/preview/start)")
 
 
 # --------------------------------------------------------------------------- #

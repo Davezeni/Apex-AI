@@ -52,3 +52,16 @@ class CodespacesSandbox(Sandbox):
             stdout=stdout.decode(errors="replace"),
             stderr=stderr.decode(errors="replace"),
         )
+
+    async def run_server(self, cmd: str, port: int, cwd: str = "") -> None:
+        if not self._gh:
+            raise SandboxError("gh CLI not found")
+        # Start detached via nohup inside the Codespace.
+        await self.run_command(
+            f"cd /workspaces/*/{cwd or ''} 2>/dev/null; nohup sh -c '{cmd}' >/tmp/apex-server.log 2>&1 &"
+        )
+
+    async def server_url(self, port: int) -> str:
+        # Codespaces forwards the port; the host reaches it on localhost via
+        # the forwarded tunnel.
+        return f"http://localhost:{port}"

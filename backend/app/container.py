@@ -41,6 +41,7 @@ from .tools.github import (
 )
 from .tools.image_gen import GenerateImageTool
 from .tools.knowledge import KnowledgeAddTool, KnowledgeQueryTool
+from .tools.preview import PreviewTool
 from .tools.registry import ToolContext, ToolRegistry
 from .tools.sandbox import RunCommandTool, SandboxStatusTool
 from .tools.vision import DescribeImageTool, OcrImageTool
@@ -157,6 +158,7 @@ def build_tools(
         WorkspaceProtectTool(),
         GenerateChartTool(),
         GenerateDocumentTool(),
+        PreviewTool(),
     ):
         registry.register(tool)
 

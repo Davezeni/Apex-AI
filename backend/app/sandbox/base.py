@@ -36,3 +36,13 @@ class Sandbox(ABC):
     async def available(self) -> bool:
         """Whether the sandbox backend is installed/usable on this host."""
         raise NotImplementedError
+
+    @abstractmethod
+    async def run_server(self, cmd: str, port: int, cwd: str = "") -> None:
+        """Start a long-running dev server for a port (fire-and-forget)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def server_url(self, port: int) -> str:
+        """Return the URL the host can use to reach the sandbox's port."""
+        raise NotImplementedError
