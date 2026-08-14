@@ -80,14 +80,16 @@ class GeminiAdapter(ProviderAdapter):
                 continue
 
             if m.role == "tool":
+                fr: dict = {
+                    "name": m.name or "tool",
+                    "response": {"result": m.content or ""},
+                }
+                # Echo the call id so Gemini can match the response to the call.
+                if m.tool_call_id:
+                    fr["id"] = m.tool_call_id
                 contents.append({
                     "role": "user",
-                    "parts": [{
-                        "functionResponse": {
-                            "name": m.name or "tool",
-                            "response": {"result": m.content or ""},
-                        }
-                    }],
+                    "parts": [{"functionResponse": fr}],
                 })
                 continue
 
@@ -95,9 +97,14 @@ class GeminiAdapter(ProviderAdapter):
                 parts = []
                 for tc in m.tool_calls:
                     fc: dict = {"name": tc.name, "args": tc.arguments}
+                    if tc.id:
+                        fc["id"] = tc.id
+                    part: dict = {"functionCall": fc}
+                    # Gemini thinking mode requires echoing the thought
+                    # signature back at the PART level (not inside functionCall).
                     if tc.thought_signature:
-                        fc["thought_signature"] = tc.thought_signature
-                    parts.append({"functionCall": fc})
+                        part["thoughtSignature"] = tc.thought_signature
+                    parts.append(part)
                 contents.append({"role": "model", "parts": parts})
                 continue
 
@@ -134,12 +141,15 @@ class GeminiAdapter(ProviderAdapter):
                 if "functionCall" in part:
                     fc = part["functionCall"]
                     args = fc.get("args") if isinstance(fc.get("args"), dict) else {}
+                    # thoughtSignature is a SIBLING of functionCall at the part
+                    # level (camelCase), not inside the functionCall object.
+                    sig = part.get("thoughtSignature")
                     tool_calls.append(
                         ToolCall(
-                            id=fc.get("name", ""),
+                            id=fc.get("id") or fc.get("name", ""),
                             name=fc["name"],
                             arguments=args,
-                            thought_signature=fc.get("thought_signature"),
+                            thought_signature=sig,
                         )
                     )
 

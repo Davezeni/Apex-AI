@@ -169,7 +169,11 @@ class OpenAICompatAdapter(ProviderAdapter):
     @staticmethod
     def _to_wire(m: Message) -> dict:
         msg: dict = {"role": _ROLE_MAP[m.role]}
-        if m.content:
+        # Tool messages MUST always carry a content field (even empty), and
+        # assistant/user text goes into content too.
+        if m.role == "tool":
+            msg["content"] = m.content if m.content is not None else ""
+        elif m.content:
             msg["content"] = m.content
         if m.tool_calls:
             msg["tool_calls"] = [
