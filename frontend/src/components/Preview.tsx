@@ -39,21 +39,10 @@ export default function Preview() {
         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-4 text-center text-muted">
           <div className="text-3xl">👁️</div>
           <p className="text-sm">
-            No preview yet. Ask the agent to build a web app, then it will
-            appear here — or tap below to preview static files.
+            No preview yet. Ask the agent to build a web page — it will write an
+            <span className="font-mono text-fg/80"> index.html </span>
+            and it will appear here automatically.
           </p>
-          <button
-            onClick={() => {
-              fetch('/api/preview/start', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode: 'static' }),
-              }).then(load)
-            }}
-            className="rounded-lg border border-border bg-panel px-3 py-2 text-xs text-fg hover:border-muted"
-          >
-            Start static preview
-          </button>
         </div>
       ) : (
         <>
@@ -71,15 +60,16 @@ export default function Preview() {
               </button>
             </div>
           )}
+          {/* key includes workspaceTick so the iframe reloads when files change */}
           <iframe
-            key={state.url || 'preview'}
+            key={workspaceTick}
             src={state.url || undefined}
             className="flex-1 w-full border-0 bg-white"
             title="Live preview"
           />
         </>
       )}
-      {loading && <div className="text-center text-xs text-muted py-1">Loading…</div>}
+      {loading && <div className="py-1 text-center text-xs text-muted">Loading…</div>}
     </div>
   )
 }
