@@ -8,6 +8,7 @@ model call. Structured so an orchestrator can run multiple specialists.
 
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Awaitable, Callable
 
@@ -24,6 +25,8 @@ from .events import (
     ToolResultEvent,
 )
 from .specialists import Specialist, classify_and_pick
+
+logger = logging.getLogger("apex.agent")
 
 Emit = Callable[[AgentEvent], Awaitable[None]]
 
@@ -79,7 +82,10 @@ class Agent:
     def _workspace_context(self) -> str | None:
         """Build a compact snapshot of the current workspace file tree so the
         agent 'sees' what it has already built and can maintain continuity
-        when the user asks to adjust/extend earlier work."""
+        when the user asks to adjust/extend earlier work.
+
+        Kept small (<= 40 files, short) so it doesn't blow past small models'
+        token limits (which caused HTTP 413 'request too large')."""
         root = self._ctx.workspace_root
         try:
             entries = sorted(p.relative_to(root) for p in root.rglob("*") if p.is_file())
@@ -87,15 +93,14 @@ class Agent:
             return None
         if not entries:
             return None
-        names = [str(e) for e in entries][:200]
+        names = [str(e) for e in entries][:40]
         lines = [
-            "Current workspace files (you built these earlier — use read_file to "
-            "inspect and edit_file/write_file to adjust them when the user asks "
-            "to change or extend something):",
+            "Current workspace files (built earlier — read_file to inspect, "
+            "write_file/edit_file to adjust):",
         ]
         lines += [f"- {n}" for n in names]
-        if len(entries) > 200:
-            lines.append(f"... and {len(entries) - 200} more")
+        if len(entries) > 40:
+            lines.append(f"... and {len(entries) - 40} more")
         return "\n".join(lines)
 
     async def run(
@@ -143,8 +148,16 @@ class Agent:
                     on_delta=on_delta,
                     prefer_models=specialist.preferred_models or None,
                 )
-            except Exception as exc:  # noqa: BLE001 — surface model errors, don't crash
-                await emit(Error(message=f"model error: {exc}"))
+            except Exception as exc:  # noqa: BLE001 — log full error, show clean message
+                logger.warning("model generation failed: %s", exc)
+                await emit(
+                    Error(
+                        message=(
+                            "All models are temporarily busy or rate-limited. "
+                            "Please wait a few seconds and try again."
+                        )
+                    )
+                )
                 return final_text
 
             if response.reasoning:

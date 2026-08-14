@@ -125,7 +125,7 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
           </button>
         )}
       </div>
-      <pre className="max-h-80 overflow-x-auto overflow-y-auto px-3 py-2 font-mono text-[11px] leading-relaxed text-fg/85 whitespace-pre-wrap break-words">
+      <pre className="max-h-80 overflow-y-auto px-3 py-2 font-mono text-[11px] leading-relaxed text-fg/85 whitespace-pre-wrap break-words">
         {shown}
       </pre>
     </div>
@@ -239,10 +239,10 @@ function BashStep({ step }: { step: ToolStep }) {
         <span className="ml-auto text-muted">{open ? '▾' : '▸'}</span>
       </button>
       {open && (
-        <div className="border-t border-border bg-ink/40 px-3 py-2 font-mono text-[11px] leading-relaxed max-h-60 overflow-y-auto">
-          {command && <div className="text-fg/80"><span className="text-green-500">$ </span>{command}</div>}
-          {stdout && <pre className="mt-1 whitespace-pre-wrap text-fg/70">{stdout}</pre>}
-          {stderr && <pre className="mt-1 whitespace-pre-wrap text-red-300/80">{stderr}</pre>}
+        <div className="border-t border-border bg-ink/40 px-3 py-2 font-mono text-[11px] leading-relaxed max-h-60 overflow-y-auto overflow-x-hidden">
+          {command && <div className="break-words text-fg/80"><span className="text-green-500">$ </span>{command}</div>}
+          {stdout && <pre className="mt-1 whitespace-pre-wrap break-words text-fg/70">{stdout}</pre>}
+          {stderr && <pre className="mt-1 whitespace-pre-wrap break-words text-red-300/80">{stderr}</pre>}
         </div>
       )}
     </div>

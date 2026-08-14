@@ -96,7 +96,6 @@ class Settings(BaseSettings):
             PoolEntry(provider="groq", model="qwen/qwen3.6-27b", priority=1),
             PoolEntry(provider="groq", model="groq/compound", priority=1),
             PoolEntry(provider="groq", model="openai/gpt-oss-20b", priority=1),
-            PoolEntry(provider="groq", model="llama-3.1-8b-instant", priority=1),
             PoolEntry(provider="gemini", model="gemini-3.6-flash", priority=2),
             PoolEntry(provider="gemini", model="gemini-3.5-flash", priority=2),
             PoolEntry(provider="gemini", model="gemini-3.5-flash-lite", priority=2),

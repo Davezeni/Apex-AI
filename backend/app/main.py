@@ -185,8 +185,8 @@ async def ws_chat(ws: WebSocket) -> None:
 
             try:
                 await orchestrator.run(message, history=history, emit=emit2)
-            except Exception as exc:  # noqa: BLE001 — never kill the connection
-                await emit(Error(message=f"error: {exc}"))
+            except Exception:  # noqa: BLE001 — never kill the connection or dump raw errors
+                await emit(Error(message="Something went wrong. Please try again."))
 
             if cid:
                 store.add_message(cid, "assistant", "".join(answer))

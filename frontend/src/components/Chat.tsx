@@ -77,7 +77,7 @@ export default function Chat() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface">
-      <div ref={scrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+      <div ref={scrollRef} className="min-h-0 w-full flex-1 space-y-4 overflow-y-auto overflow-x-hidden p-4">
         {messages.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center text-center text-muted">
             <div className="mb-2 text-3xl">🛠️</div>
