@@ -99,7 +99,7 @@ class Settings(BaseSettings):
             PoolEntry(provider="gemini", model="gemini-3.6-flash", priority=2),
             PoolEntry(provider="gemini", model="gemini-3.5-flash", priority=2),
             PoolEntry(provider="gemini", model="gemini-3.5-flash-lite", priority=2),
-            PoolEntry(provider="ollama", model="qwen2.5:14b", priority=9),
+            PoolEntry(provider="ollama", model="qwen2.5:7b", priority=9),
         ]
     )
 

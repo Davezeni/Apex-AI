@@ -44,8 +44,9 @@ nano .env   # paste GROQ_API_KEY, GEMINI_API_KEY, GITHUB_TOKEN, and
 # Build + start (app + ollama + sandbox)
 docker compose --profile ollama --profile sandbox up -d --build
 
-# Pull a local model for the unlimited fallback
-docker exec apex-ollama ollama pull qwen2.5:14b
+# Pull a local model for the unlimited fallback.
+# NOTE: the free VM is ARM + CPU-only, so use a 7B model (14B is too slow here).
+docker exec apex-ollama ollama pull qwen2.5:7b
 ```
 
 Then open **http://<VM_PUBLIC_IP>:8000** on your phone. That's it.
@@ -67,8 +68,9 @@ docker compose --profile ollama --profile sandbox up -d --build
   I'll adjust `docker-compose.yml`.
 - **ARM architecture**: all images (Python, Node, Ollama) are multi-arch, so
   this works on Oracle's ARM shape.
-- **Ollama on ARM**: some models are slower on ARM without GPU, but Qwen 14B
-  runs fine for fallback.
+- **Ollama on ARM**: runs via official ARM64 builds; no GPU on the free tier
+  means CPU-only inference. A 7B model is a good speed/quality balance;
+  14B works but is slow (1-3 tok/s).
 - **Persistence**: workspace + SQLite live in `./workspace` and `./data` on the
   VM disk — they survive restarts. Supabase (optional) adds cross-host memory.
 
