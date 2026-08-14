@@ -26,3 +26,10 @@ services:
         value: docker
       - key: ENABLE_OLLAMA
         value: "false"
+      # Persistent storage (set in dashboard; keeps memory across redeploys)
+      - key: STORE_BACKEND
+        value: supabase
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false

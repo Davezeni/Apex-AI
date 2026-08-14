@@ -99,6 +99,15 @@ def build_router(
 
 
 def build_store(settings: Settings) -> Store:
+    if settings.store_backend == "supabase":
+        if not (settings.supabase_url and settings.supabase_service_role_key):
+            raise RuntimeError(
+                "STORE_BACKEND=supabase requires SUPABASE_URL and "
+                "SUPABASE_SERVICE_ROLE_KEY"
+            )
+        from .memory.supabase_store import SupabaseStore
+
+        return SupabaseStore(settings.supabase_url, settings.supabase_service_role_key)
     return Store(settings.workspace_root.parent / "apex.sqlite3")
 
 

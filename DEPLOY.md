@@ -47,3 +47,23 @@ need two things (because pushing workflow files requires the `workflow` scope):
 Free-tier Render services **sleep after ~15 min idle** and the filesystem is
 **ephemeral** (resets on redeploy). For 24/7 + persistence, later move to a free
 VM (Oracle Always Free).
+
+---
+
+## Persistent storage with Supabase (fixes the ephemeral-filesystem problem)
+
+Render's free tier wipes the SQLite DB on every redeploy, which erases
+conversation memory and uploaded-document knowledge. To keep them permanently:
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. Copy `supabase/schema.sql` into the **SQL Editor** and **Run** it (creates
+   the `conversations`, `messages`, and `knowledge_chunks` tables).
+3. In **Project Settings → API**, copy the **Project URL** and the
+   **`service_role` key** (keep this secret — it bypasses RLS).
+4. Set these env vars in Render (or in `.env` locally):
+   - `STORE_BACKEND=supabase`
+   - `SUPABASE_URL=https://YOURPROJECT.supabase.co`
+   - `SUPABASE_SERVICE_ROLE_KEY=...`
+
+> ⚠️ Never commit or share the `service_role` key. If it's ever exposed,
+> rotate it in **Project Settings → API → JWT Settings**.

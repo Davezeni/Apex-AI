@@ -70,6 +70,12 @@ class Settings(BaseSettings):
     # --- Workspace ---
     workspace_root: Path = ROOT_DIR / "workspace"
 
+    # --- Storage backend: "sqlite" (local) | "supabase" (persistent cloud) ---
+    store_backend: str = "sqlite"
+    supabase_url: str | None = None
+    supabase_anon_key: str | None = None
+    supabase_service_role_key: str | None = None
+
     # --- Sandbox selection ---
     sandbox_backend: str = "docker"  # "docker" | "codespaces"
     codespace_name: str = ""         # required when sandbox_backend == "codespaces"
