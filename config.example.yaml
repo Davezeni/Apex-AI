@@ -26,9 +26,14 @@ agent:
 
 # MCP servers (optional): external tools the agent can use.
 # Each entry starts a local process via stdio and exposes its tools as
-# mcp_<name>_<tool>. Uncomment to enable.
+# mcp_<name>_<tool>. Copy this file to config.yaml and uncomment to enable.
+# Example — the official filesystem MCP server (needs Node.js / npx):
 # mcp:
 #   servers:
 #     - name: filesystem
 #       command: npx
 #       args: ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
+# Example — a fetch/web MCP server (needs a package installed globally):
+#     - name: fetch
+#       command: uvx
+#       args: ["mcp-server-fetch"]

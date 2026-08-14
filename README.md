@@ -144,13 +144,16 @@ Model IDs are config-driven because providers update catalogs often. Local Ollam
 
 ## 🗺 Roadmap
 
-| Layer | Scope |
-|-------|-------|
-| **1 (now)** | Single agent: chat, router, file tools, sandbox + preview, search, GitHub, export, RAG, health |
-| **2** | Multi-agent (orchestrator + specialist workers), multi-model review |
-| **3** | Third-party apps via MCP/OAuth |
-| **4** | Self-edit, self-heal, and security monitoring of Apex AI itself |
-| **5** | Fine-tuning custom models (separate GPU pipeline) |
+**Built (Layers 1–3):** single agent + multi-model router · multi-agent (orchestrator + 6 specialists + reviewer) · 25+ tools · RAG + auto-retrieval · image gen + vision/OCR · charts + document authoring · MCP support · workspace protection + persistence · conversation memory + auto-titling · live preview · mobile-first UI.
+
+**Next (in priority order):**
+| # | Item | Why |
+|---|------|-----|
+| 1 | Always-on hosting (free VM / Docker) | Render free sleeps + is ephemeral; a VM gives 24/7 + real sandbox/preview |
+| 2 | Enable MCP servers in config | Unlock hundreds of third-party tools |
+| 3 | Parallel specialists | Run coder + designer concurrently on multi-part tasks |
+| 4 | Self-editing (Layer 4) | Agent improves its own code with git-rollback safety |
+| 5 | Fine-tuning custom models | Needs GPUs; realistic only later |
 
 ## 📜 License
 

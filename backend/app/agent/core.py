@@ -80,12 +80,14 @@ class Agent:
         return "\n\n".join(lines)
 
     def _workspace_context(self) -> str | None:
-        """Build a compact snapshot of the current workspace file tree so the
-        agent 'sees' what it has already built and can maintain continuity
-        when the user asks to adjust/extend earlier work.
+        """Build a compact snapshot of the current workspace so the agent
+        'sees' what it has already built and can maintain continuity when the
+        user asks to adjust/extend earlier work.
 
-        Kept small (<= 40 files, short) so it doesn't blow past small models'
-        token limits (which caused HTTP 413 'request too large')."""
+        Includes file NAMES always, plus the CONTENTS of small code files
+        (capped), so the agent can edit existing code without a read_file
+        round-trip. Total budget is capped to avoid blowing past small
+        models' token limits (which caused HTTP 413)."""
         root = self._ctx.workspace_root
         try:
             entries = sorted(p.relative_to(root) for p in root.rglob("*") if p.is_file())
@@ -93,15 +95,58 @@ class Agent:
             return None
         if not entries:
             return None
+
+        skip = {"apex_memory.md", ".apexignore"}
+        entries = [e for e in entries if str(e) not in skip]
+
+        CODE_EXTS = {".py", ".js", ".ts", ".tsx", ".jsx", ".html", ".css",
+                     ".json", ".md", ".yml", ".yaml", ".go", ".rs", ".java", ".sh"}
+
         names = [str(e) for e in entries][:40]
         lines = [
-            "Current workspace files (built earlier — read_file to inspect, "
-            "write_file/edit_file to adjust):",
+            "Current workspace (built earlier - edit with write_file/edit_file, "
+            "or read_file for full contents):",
         ]
         lines += [f"- {n}" for n in names]
         if len(entries) > 40:
-            lines.append(f"... and {len(entries) - 40} more")
+            lines.append(f"... and {len(entries) - 40} more files")
+
+        budget = 6000
+        used = 0
+        content_blocks: list[str] = []
+        for e in entries:
+            if "." + str(e).split(".")[-1].lower() not in CODE_EXTS:
+                continue
+            try:
+                data = (root / e).read_text(encoding="utf-8", errors="replace")
+            except Exception:  # noqa: BLE001
+                continue
+            if len(data) > 2000:
+                data = data[:2000] + "\n...(truncated)"
+            if used + len(data) > budget:
+                continue
+            content_blocks.append(f"--- {e} ---\n{data}")
+            used += len(data)
+
+        if content_blocks:
+            lines.append("\nFile contents (truncated):\n" + "\n\n".join(content_blocks))
+
         return "\n".join(lines)
+
+    def _memory_file(self) -> str | None:
+        """Read the long-term memory file (apex_memory.md) if it exists.
+
+        This is a persistent 'who the user is / preferences / past decisions'
+        store that compounds over time, similar to Claude Code's CLAUDE.md."""
+        path = self._ctx.workspace_root / "apex_memory.md"
+        try:
+            if path.is_file():
+                data = path.read_text(encoding="utf-8", errors="replace").strip()
+                if data:
+                    return data
+        except Exception:  # noqa: BLE001
+            return None
+        return None
 
     async def run(
         self,
@@ -120,8 +165,15 @@ class Agent:
         # Grounding: retrieve relevant knowledge before the first call.
         knowledge = await self._retrieve_knowledge(user_message)
         workspace = self._workspace_context()
+        memory = self._memory_file()
 
         messages: list[Message] = [Message(role="system", content=specialist.persona)]
+        if memory:
+            messages.append(Message(role="system", content=(
+                "Long-term memory about this user and project (maintained in "
+                "apex_memory.md; update it with write_file when you learn a "
+                "durable preference or decision):\n" + memory
+            )))
         if knowledge:
             messages.append(Message(role="system", content=knowledge))
         if workspace:

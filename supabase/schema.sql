@@ -32,3 +32,9 @@ create table if not exists knowledge_chunks (
 
 create index if not exists knowledge_doc_idx
   on knowledge_chunks(document_id);
+
+create table if not exists workspace_files (
+  path text primary key,
+  content text not null,
+  updated_at double precision not null
+);

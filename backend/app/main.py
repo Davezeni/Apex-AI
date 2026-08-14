@@ -36,6 +36,7 @@ from .container import (
 )
 
 from .router.schema import Message
+from .workspace.persistence import build_workspace_persistence
 from .workspace.protect import WorkspaceProtection
 
 settings = load_settings()
@@ -57,9 +58,25 @@ mcp_manager = build_mcp_manager(settings)
 protection = WorkspaceProtection(settings.workspace_root)
 protection.ensure_defaults()
 
+# Workspace persistence: survive Render's ephemeral filesystem.
+workspace_persist = build_workspace_persistence(
+    settings.store_backend,
+    settings.supabase_url,
+    settings.supabase_service_role_key,
+    settings.workspace_root,
+)
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    # Restore previously-built workspace files (best-effort).
+    if workspace_persist is not None:
+        try:
+            restored = workspace_persist.restore()
+            if restored:
+                pass  # restored N files
+        except Exception:  # noqa: BLE001
+            pass
     # Register MCP tools from configured servers (optional; failures skipped).
     if mcp_manager.available:
         try:
@@ -70,6 +87,8 @@ async def lifespan(_app: FastAPI):
             pass
     yield
     await mcp_manager.close()
+    if workspace_persist is not None:
+        workspace_persist.close()
 
 
 app = FastAPI(title="Apex AI", version="0.4.0", lifespan=lifespan)
@@ -214,6 +233,13 @@ async def ws_chat(ws: WebSocket) -> None:
 
             if cid:
                 store.add_message(cid, "assistant", "".join(answer))
+
+            # Persist the workspace after each turn (best-effort).
+            if workspace_persist is not None:
+                try:
+                    workspace_persist.save()
+                except Exception:  # noqa: BLE001
+                    pass
     except WebSocketDisconnect:
         pass
 
