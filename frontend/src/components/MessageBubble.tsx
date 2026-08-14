@@ -11,7 +11,7 @@ export default function MessageBubble({ message }: Props) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[80%] rounded-2xl bg-panel border border-border px-4 py-2.5 text-sm leading-relaxed text-fg">
+        <div className="max-w-[85%] min-w-0 break-words rounded-2xl bg-panel border border-border px-4 py-2.5 text-sm leading-relaxed text-fg">
           <RichText text={message.text} />
         </div>
       </div>
@@ -21,7 +21,7 @@ export default function MessageBubble({ message }: Props) {
   const done = !message.pending
 
   return (
-    <div className="space-y-2">
+    <div className="min-w-0 space-y-2">
       {(message.thoughtSeconds != null || message.thinking) && (
         <Thought seconds={message.thoughtSeconds} thinking={message.thinking} done={done} />
       )}
@@ -71,12 +71,12 @@ function Collapsible({ label, text }: { label: string; text: string }) {
 function RichText({ text }: { text: string }) {
   const parts = splitFences(text)
   return (
-    <div className="space-y-2 text-sm leading-relaxed text-fg">
+    <div className="min-w-0 space-y-2 text-sm leading-relaxed text-fg">
       {parts.map((part, i) =>
         part.type === 'code' ? (
           <CodeBlock key={i} lang={part.lang || ''} code={part.code || ''} />
         ) : (
-          <p key={i} className="whitespace-pre-wrap">{part.text || ''}</p>
+          <p key={i} className="whitespace-pre-wrap break-words">{part.text || ''}</p>
         ),
       )}
     </div>
@@ -125,7 +125,7 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
           </button>
         )}
       </div>
-      <pre className="max-h-80 overflow-y-auto px-3 py-2 font-mono text-[11px] leading-relaxed text-fg/85 whitespace-pre-wrap">
+      <pre className="max-h-80 overflow-x-auto overflow-y-auto px-3 py-2 font-mono text-[11px] leading-relaxed text-fg/85 whitespace-pre-wrap break-words">
         {shown}
       </pre>
     </div>

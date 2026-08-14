@@ -12,6 +12,7 @@ export default {
         border: '#3B342A',    // borders / dividers
         muted: '#8A8884',     // secondary text (warm gray)
         fg: '#E8E6E1',        // primary text (warm white)
+        accent: '#6b6660',    // subtle warm accent (send button), monochrome
       },
       borderRadius: {
         xl: '10px',

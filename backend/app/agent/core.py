@@ -76,6 +76,28 @@ class Agent:
             lines.append(f"[{c.source}] {c.text}")
         return "\n\n".join(lines)
 
+    def _workspace_context(self) -> str | None:
+        """Build a compact snapshot of the current workspace file tree so the
+        agent 'sees' what it has already built and can maintain continuity
+        when the user asks to adjust/extend earlier work."""
+        root = self._ctx.workspace_root
+        try:
+            entries = sorted(p.relative_to(root) for p in root.rglob("*") if p.is_file())
+        except Exception:  # noqa: BLE001
+            return None
+        if not entries:
+            return None
+        names = [str(e) for e in entries][:200]
+        lines = [
+            "Current workspace files (you built these earlier — use read_file to "
+            "inspect and edit_file/write_file to adjust them when the user asks "
+            "to change or extend something):",
+        ]
+        lines += [f"- {n}" for n in names]
+        if len(entries) > 200:
+            lines.append(f"... and {len(entries) - 200} more")
+        return "\n".join(lines)
+
     async def run(
         self,
         user_message: str,
@@ -92,10 +114,13 @@ class Agent:
 
         # Grounding: retrieve relevant knowledge before the first call.
         knowledge = await self._retrieve_knowledge(user_message)
+        workspace = self._workspace_context()
 
         messages: list[Message] = [Message(role="system", content=specialist.persona)]
         if knowledge:
             messages.append(Message(role="system", content=knowledge))
+        if workspace:
+            messages.append(Message(role="system", content=workspace))
         messages += list(history or [])
         messages.append(Message(role="user", content=user_message))
 

@@ -73,12 +73,13 @@ export default function App() {
             </>
           )}
 
-          {/* Top bar: hamburger + brand */}
-          <div className="flex items-center gap-2 border-b border-border bg-panel px-3 py-2">
+          {/* ONE bar: hamburger + chat/code/preview tabs + brand */}
+          <div className="flex items-center gap-1 border-b border-border bg-panel px-2 py-1.5">
             <button
               onClick={() => setMobileMenu(true)}
               title="Menu"
-              className="rounded-lg p-1.5 text-fg hover:bg-surface"
+              aria-label="Menu"
+              className="rounded-lg p-2 text-muted hover:bg-surface hover:text-fg"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <line x1="3" y1="6" x2="21" y2="6" />
@@ -86,23 +87,25 @@ export default function App() {
                 <line x1="3" y1="18" x2="21" y2="18" />
               </svg>
             </button>
-            <span className="text-fg font-semibold">Apex AI</span>
-          </div>
 
-          {/* Icon-only tabs */}
-          <nav className="flex border-b border-border bg-panel">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setPane(t.id)}
-                title={t.title}
-                aria-label={t.title}
-                className={`flex flex-1 items-center justify-center py-2 text-base ${activePane === t.id ? 'text-fg border-b-2 border-fg' : 'text-muted border-b-2 border-transparent'}`}
-              >
-                {t.icon}
-              </button>
-            ))}
-          </nav>
+            <div className="mx-1 flex flex-1 items-center justify-center gap-2">
+              {TABS.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setPane(t.id)}
+                  title={t.title}
+                  aria-label={t.title}
+                  className={`flex h-8 w-9 items-center justify-center rounded-lg text-base ${
+                    activePane === t.id ? 'bg-surface text-fg' : 'text-muted hover:text-fg'
+                  }`}
+                >
+                  {t.icon}
+                </button>
+              ))}
+            </div>
+
+            <span className="px-1 text-sm font-semibold text-fg">Apex AI</span>
+          </div>
 
           <div className="flex-1 overflow-hidden">
             {activePane === 'chat' && <Chat />}
