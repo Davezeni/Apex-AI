@@ -4,18 +4,10 @@ import type { AgentEvent, ToolStep } from '../types'
 
 let socket: WebSocket | null = null
 let turnStart = 0
-let conversationId: string | null = null
 let lastWrittenPath: string | null = null
 
-export function setConversationId(id: string | null) {
-  conversationId = id
-}
-
-export function getConversationId() {
-  return conversationId
-}
-
 export function sendMessage(message: string) {
+  const conversationId = useChat.getState().currentId
   if (!socket || socket.readyState !== WebSocket.OPEN) {
     connect()
     socket!.addEventListener('open', () => socket!.send(JSON.stringify({ message, conversation_id: conversationId })), { once: true })

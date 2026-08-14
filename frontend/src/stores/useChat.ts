@@ -1,6 +1,12 @@
 import { create } from 'zustand'
 import type { ChatMessage, FileChange, Pane, ToolStep } from '../types'
 
+export interface Conversation {
+  id: string
+  title: string
+  updated_at: number
+}
+
 interface ChatState {
   messages: ChatMessage[]
   activePane: Pane
@@ -11,12 +17,18 @@ interface ChatState {
   fileContent: string
   /** increments when the workspace may have changed (files written/agent done) */
   workspaceTick: number
+  conversations: Conversation[]
+  currentId: string | null
   setPane: (pane: Pane) => void
   toggleSidebar: () => void
   setMobileMenu: (open: boolean) => void
   openFile: (path: string) => Promise<void>
   closeFile: () => void
   bumpWorkspace: () => void
+  loadConversations: () => Promise<void>
+  selectConversation: (id: string) => Promise<void>
+  newConversation: () => Promise<void>
+  deleteConversation: (id: string) => Promise<void>
   addMessage: (msg: ChatMessage) => void
   appendDelta: (delta: string) => void
   appendStep: (step: ToolStep) => void
@@ -45,11 +57,73 @@ export const useChat = create<ChatState>((set) => ({
   activeFile: null,
   fileContent: '',
   workspaceTick: 0,
+  conversations: [],
+  currentId: null,
 
   setPane: (pane) => set({ activePane: pane, mobileMenuOpen: false }),
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   setMobileMenu: (open) => set({ mobileMenuOpen: open }),
   bumpWorkspace: () => set((s) => ({ workspaceTick: s.workspaceTick + 1 })),
+
+  loadConversations: async () => {
+    try {
+      const r = await fetch('/api/conversations')
+      const convs = (await r.json()) as Conversation[]
+      set({ conversations: convs })
+    } catch {
+      /* ignore */
+    }
+  },
+
+  selectConversation: async (id) => {
+    try {
+      const r = await fetch(`/api/conversations/${id}`)
+      const conv = await r.json()
+      const msgs = (conv.messages || [])
+        .filter((m: { role: string; content: string }) => m.content && m.content.trim())
+        .map((m: { id: string; role: string; content: string }) => ({
+          id: m.id,
+          role: m.role === 'user' ? 'user' : 'assistant',
+          text: m.content,
+          steps: [],
+          files: [],
+          thoughtSeconds: null,
+          thinking: '',
+          pending: false,
+        }))
+      set({ messages: msgs, currentId: id })
+    } catch {
+      /* ignore */
+    }
+  },
+
+  newConversation: async () => {
+    try {
+      const r = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'New conversation' }),
+      })
+      const conv = await r.json()
+      set({ messages: [], currentId: conv.id })
+      await useChat.getState().loadConversations()
+    } catch {
+      /* ignore */
+    }
+  },
+
+  deleteConversation: async (id) => {
+    try {
+      await fetch(`/api/conversations/${id}`, { method: 'DELETE' })
+      const next = useChat.getState()
+      if (next.currentId === id) {
+        set({ currentId: null, messages: [] })
+      }
+      await useChat.getState().loadConversations()
+    } catch {
+      /* ignore */
+    }
+  },
 
   openFile: async (path) => {
     set({ activeFile: path })

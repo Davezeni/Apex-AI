@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { useChat } from './stores/useChat'
-import { setConversationId } from './lib/ws'
 import Sidebar from './components/Sidebar'
 import Chat from './components/Chat'
 import Workspace from './components/Workspace'
@@ -20,25 +19,25 @@ export default function App() {
   const sidebarCollapsed = useChat((s) => s.sidebarCollapsed)
   const mobileMenuOpen = useChat((s) => s.mobileMenuOpen)
   const setMobileMenu = useChat((s) => s.setMobileMenu)
+  const selectConversation = useChat((s) => s.selectConversation)
+  const newConversation = useChat((s) => s.newConversation)
 
-  // Ensure a conversation exists so the backend can persist memory.
+  // On load: fetch conversations, select the most recent (or create one).
   useEffect(() => {
-    fetch('/api/conversations')
-      .then((r) => r.json())
-      .then((convs: { id: string }[]) => {
+    ;(async () => {
+      try {
+        const r = await fetch('/api/conversations')
+        const convs: { id: string }[] = await r.json()
         if (convs.length > 0) {
-          setConversationId(convs[0].id)
+          await selectConversation(convs[0].id)
         } else {
-          fetch('/api/conversations', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: 'New conversation' }),
-          })
-            .then((r) => r.json())
-            .then((c: { id: string }) => setConversationId(c.id))
+          await newConversation()
         }
-      })
-      .catch(() => {})
+      } catch {
+        /* ignore */
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

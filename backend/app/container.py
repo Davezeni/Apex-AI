@@ -119,6 +119,22 @@ def build_github(settings: Settings) -> GitHubClient | None:
     return GitHubClient(settings.github_token) if settings.github_token else None
 
 
+def build_mcp_manager(settings: Settings) -> "MCPManager":
+    from .mcp.client import MCPServerConfig, MCPManager
+
+    servers = [
+        MCPServerConfig(
+            name=s.get("name", f"server{i}"),
+            command=s["command"],
+            args=s.get("args", []),
+            env=s.get("env", {}),
+        )
+        for i, s in enumerate(settings.mcp_servers)
+        if isinstance(s, dict) and s.get("command")
+    ]
+    return MCPManager(servers)
+
+
 def build_vision(settings: Settings) -> VisionClient | None:
     return VisionClient(settings.gemini_api_key) if settings.gemini_api_key else None
 

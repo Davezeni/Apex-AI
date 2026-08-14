@@ -76,6 +76,9 @@ class Settings(BaseSettings):
     supabase_anon_key: str | None = None
     supabase_service_role_key: str | None = None
 
+    # --- MCP servers (optional; each exposes external tools to the agent) ---
+    mcp_servers: list[dict] = Field(default_factory=list)
+
     # --- Sandbox selection ---
     sandbox_backend: str = "docker"  # "docker" | "codespaces"
     codespace_name: str = ""         # required when sandbox_backend == "codespaces"
@@ -121,6 +124,10 @@ def _apply_config_file(settings: Settings) -> Settings:
     agent = raw.get("agent") or {}
     if "max_iterations" in agent:
         settings.max_iterations = agent["max_iterations"]
+
+    mcp = raw.get("mcp") or {}
+    if isinstance(mcp.get("servers"), list):
+        settings.mcp_servers = mcp["servers"]
 
     return settings
 

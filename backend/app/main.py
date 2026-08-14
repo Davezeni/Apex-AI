@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import tempfile
 import zipfile
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import httpx
@@ -26,6 +27,7 @@ from .container import (
     build_adapters,
     build_github,
     build_knowledge,
+    build_mcp_manager,
     build_router,
     build_sandbox,
     build_store,
@@ -48,11 +50,29 @@ ctx = build_tool_context(settings, github=github, sandbox=sandbox, knowledge=kno
 agent = Agent(router, tools, ctx, max_iterations=settings.max_iterations)
 orchestrator = Orchestrator(router, tools, ctx, max_iterations=settings.max_iterations)
 
+# MCP manager: connects to configured external servers and registers their tools.
+mcp_manager = build_mcp_manager(settings)
+
 # Workspace protection: keep the workspace lean by excluding artifacts.
 protection = WorkspaceProtection(settings.workspace_root)
 protection.ensure_defaults()
 
-app = FastAPI(title="Apex AI", version="0.3.0")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Register MCP tools from configured servers (optional; failures skipped).
+    if mcp_manager.available:
+        try:
+            mcp_tools = await mcp_manager.start()
+            for t in mcp_tools:
+                tools.register(t)
+        except Exception:  # noqa: BLE001 — MCP is best-effort
+            pass
+    yield
+    await mcp_manager.close()
+
+
+app = FastAPI(title="Apex AI", version="0.4.0", lifespan=lifespan)
 
 # Preview state: tracks how the built app is being previewed.
 #   mode: "none" | "static" (serve workspace files, works anywhere) | "server"

@@ -26,6 +26,9 @@ Apex AI is a full-stack AI builder you can run anywhere. Chat with an agent that
 - **Format conversion** — copy data between PDF, Excel, CSV, Word, PowerPoint, Markdown, and HTML.
 - **Data analysis & charts** — analyze anything, and generate bar/line/pie/scatter charts (images or interactive HTML).
 - **Document authoring** — generate SAD, SDD, PRD, README, and presentation decks, with font styling, internal/external links, and cited quotations.
+- **MCP support** — plug into any Model Context Protocol server (databases, filesystems, browsers, etc.) to extend the agent with third-party tools.
+- **Persistent memory** — conversations and knowledge survive redeploys via Supabase (or local SQLite).
+- **Conversation sidebar** — create, switch, and delete conversations; history reloads on open.
 - **Workspace download** — export any file or the whole workspace as a zip.
 - **Workspace protection** — auto-excludes dependency/build artifacts (`node_modules`, `__pycache__`, `dist`, `vendor`, `target`, etc.) from the file tree and exports, keeping the workspace lean (like a managed agent platform). Maintains an editable `.apexignore` file.
 - **Modern UI** — sidebar, code space (Monaco editor), thinking-step timeline, and in-chat choice questions. **Mobile-first and responsive**: single-pane with bottom-tab navigation (Chat / Code / Preview) on phones, expanding to a multi-pane layout on desktop.
