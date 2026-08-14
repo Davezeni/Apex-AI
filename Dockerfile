@@ -25,4 +25,5 @@ COPY --from=frontend-build /fe/dist /app/frontend/dist
 
 WORKDIR /app/backend
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Bind to $PORT when the platform provides one (Caasify/Render/etc.), else 8000.
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
