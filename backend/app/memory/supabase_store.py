@@ -107,7 +107,7 @@ class SupabaseStore:
     def add_chunk(self, document_id: str, source: str, chunk_index: int, text: str, embedding: list[float]) -> None:
         self._post(
             "knowledge_chunks",
-            {"id": str(uuid.uuid4()), "document_id": document_id, "source": source, "chunk_index": chunk_index, "text": text, "embedding": json.dumps(embedding)},
+            {"id": str(uuid.uuid4()), "document_id": document_id, "source": source, "chunk_index": chunk_index, "chunk_text": text, "embedding": json.dumps(embedding)},
         )
 
     def clear_document(self, document_id: str) -> None:
@@ -117,7 +117,7 @@ class SupabaseStore:
         rows = self._get("knowledge_chunks", {"select": "*"})
         result = []
         for r in rows:
-            d = {"id": r["id"], "document_id": r["document_id"], "source": r["source"], "chunk_index": r["chunk_index"], "text": r["text"], "embedding": json.loads(r["embedding"])}
+            d = {"id": r["id"], "document_id": r["document_id"], "source": r["source"], "chunk_index": r["chunk_index"], "text": r["chunk_text"], "embedding": json.loads(r["embedding"])}
             result.append(d)
         return result
 
