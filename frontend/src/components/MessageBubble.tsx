@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { ChatMessage, ToolStep } from '../types'
 
+const COLLAPSE_LINES = 15
+
 interface Props {
   message: ChatMessage
 }
@@ -10,7 +12,7 @@ export default function MessageBubble({ message }: Props) {
     return (
       <div className="flex justify-end">
         <div className="max-w-[80%] rounded-2xl bg-panel border border-border px-4 py-2.5 text-sm leading-relaxed text-fg">
-          <p className="whitespace-pre-wrap">{message.text}</p>
+          <RichText text={message.text} />
         </div>
       </div>
     )
@@ -25,53 +27,107 @@ export default function MessageBubble({ message }: Props) {
       )}
       {message.files.length > 0 && <EditedFiles files={message.files} />}
       {message.steps.length > 0 && <Steps steps={message.steps} />}
-      {message.text && <p className="whitespace-pre-wrap text-sm leading-relaxed text-fg">{message.text}</p>}
-      {message.review && <ReviewBlock text={message.review} />}
-      {message.summary && <SummaryBlock text={message.summary} />}
+      {message.text && <RichText text={message.text} />}
+      {message.review && <Collapsible label="🔍 Review" text={message.review} />}
+      {message.summary && <Collapsible label="📋 Summary" text={message.summary} />}
       {message.pending && !message.text && <span className="text-muted text-sm animate-pulse">Thinking…</span>}
       {message.error && <p className="text-red-400 text-xs">⚠️ {message.error}</p>}
     </div>
   )
 }
 
-function ReviewBlock({ text }: { text: string }) {
-  const [open, setOpen] = useState(true)
+/** Collapsible prose block (review/summary): shows up to N lines, click to expand. */
+function Collapsible({ label, text }: { label: string; text: string }) {
+  const lines = text.split('\n')
+  const [open, setOpen] = useState(lines.length <= COLLAPSE_LINES)
+
+  const truncated = lines.slice(0, COLLAPSE_LINES).join('\n')
+  const needsToggle = lines.length > COLLAPSE_LINES
+
   return (
     <div className="rounded-lg border border-border bg-deep/40">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-muted hover:text-fg"
-      >
-        <span>🔍</span>
-        <span>Review</span>
-        <span className="ml-auto">{open ? '▾' : '▸'}</span>
-      </button>
-      {open && (
-        <div className="border-t border-border px-3 py-2 text-xs leading-relaxed text-fg/90 whitespace-pre-wrap">
-          {text}
-        </div>
+      <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted">
+        <span>{label}</span>
+        {needsToggle && (
+          <button
+            onClick={() => setOpen(!open)}
+            className="ml-auto rounded border border-border px-1.5 py-0.5 text-[10px] text-muted hover:text-fg"
+          >
+            {open ? 'Show less' : `Show all (${lines.length} lines)`}
+          </button>
+        )}
+      </div>
+      <div className="border-t border-border px-3 py-2 text-xs leading-relaxed text-fg/90 whitespace-pre-wrap">
+        {open ? text : truncated + '\n…'}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Lightweight markdown renderer for message text: splits on ``` fences and
+ * renders each code block as a collapsible, max-N-lines code panel.
+ */
+function RichText({ text }: { text: string }) {
+  const parts = splitFences(text)
+  return (
+    <div className="space-y-2 text-sm leading-relaxed text-fg">
+      {parts.map((part, i) =>
+        part.type === 'code' ? (
+          <CodeBlock key={i} lang={part.lang || ''} code={part.code || ''} />
+        ) : (
+          <p key={i} className="whitespace-pre-wrap">{part.text || ''}</p>
+        ),
       )}
     </div>
   )
 }
 
-function SummaryBlock({ text }: { text: string }) {
-  const [open, setOpen] = useState(true)
+function splitFences(text: string): { type: 'text' | 'code'; text?: string; code?: string; lang?: string }[] {
+  const parts: { type: 'text' | 'code'; text?: string; code?: string; lang?: string }[] = []
+  const regex = /```([^\n]*)\n([\s\S]*?)```/g
+  let last = 0
+  let m: RegExpExecArray | null
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > last) {
+      const before = text.slice(last, m.index)
+      if (before.trim()) parts.push({ type: 'text', text: before })
+    }
+    parts.push({ type: 'code', lang: (m[1] || '').trim(), code: m[2] })
+    last = m.index + m[0].length
+  }
+  if (last < text.length) {
+    const after = text.slice(last)
+    if (after.trim()) parts.push({ type: 'text', text: after })
+  }
+  if (parts.length === 0 && text.trim()) parts.push({ type: 'text', text })
+  return parts
+}
+
+function CodeBlock({ lang, code }: { lang: string; code: string }) {
+  const lines = code.split('\n')
+  const [open, setOpen] = useState(lines.length <= COLLAPSE_LINES)
+  const needsToggle = lines.length > COLLAPSE_LINES
+  const shown = open ? code : lines.slice(0, COLLAPSE_LINES).join('\n') + '\n…'
+
   return (
-    <div className="rounded-lg border border-border bg-deep/40">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-muted hover:text-fg"
-      >
-        <span>📋</span>
-        <span>Summary</span>
-        <span className="ml-auto">{open ? '▾' : '▸'}</span>
-      </button>
-      {open && (
-        <div className="border-t border-border px-3 py-2 text-xs leading-relaxed text-fg/90 whitespace-pre-wrap">
-          {text}
-        </div>
-      )}
+    <div className="rounded-lg border border-border bg-ink/40 overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-border bg-panel/60 px-3 py-1">
+        <span className="font-mono text-[10px] uppercase tracking-wide text-muted">
+          {lang || 'code'}
+        </span>
+        {needsToggle && (
+          <button
+            onClick={() => setOpen(!open)}
+            className="ml-auto rounded border border-border px-1.5 py-0.5 text-[10px] text-muted hover:text-fg"
+          >
+            {open ? 'Show less' : `Show all (${lines.length} lines)`}
+          </button>
+        )}
+      </div>
+      <pre className="max-h-80 overflow-y-auto px-3 py-2 font-mono text-[11px] leading-relaxed text-fg/85 whitespace-pre-wrap">
+        {shown}
+      </pre>
     </div>
   )
 }
@@ -95,7 +151,7 @@ function Thought({ seconds, thinking, done }: { seconds: number | null; thinking
         {hasThinking && <span className="ml-auto text-muted">{open ? '▾' : '▸'}</span>}
       </button>
       {open && hasThinking && (
-        <div className="border-t border-border px-3 py-2 text-xs leading-relaxed text-muted whitespace-pre-wrap">
+        <div className="border-t border-border px-3 py-2 text-xs leading-relaxed text-muted whitespace-pre-wrap max-h-60 overflow-y-auto">
           {thinking}
         </div>
       )}
@@ -126,12 +182,6 @@ function EditedFiles({ files }: { files: { path: string; lang: string; summary: 
   )
 }
 
-/**
- * Render tool steps. Consecutive `run_command` steps are grouped into a
- * "Ran commands N" block; each bash command is a collapsible "used Bash · Xs"
- * with the command + output, and a green check (exit 0) or red ✗ (exit N).
- * Non-bash tools render as a row with a green/red checkmark.
- */
 function Steps({ steps }: { steps: ToolStep[] }) {
   const groups: { kind: 'bash' | 'tool'; items: ToolStep[] }[] = []
   for (const s of steps) {
@@ -189,7 +239,7 @@ function BashStep({ step }: { step: ToolStep }) {
         <span className="ml-auto text-muted">{open ? '▾' : '▸'}</span>
       </button>
       {open && (
-        <div className="border-t border-border bg-ink/40 px-3 py-2 font-mono text-[11px] leading-relaxed">
+        <div className="border-t border-border bg-ink/40 px-3 py-2 font-mono text-[11px] leading-relaxed max-h-60 overflow-y-auto">
           {command && <div className="text-fg/80"><span className="text-green-500">$ </span>{command}</div>}
           {stdout && <pre className="mt-1 whitespace-pre-wrap text-fg/70">{stdout}</pre>}
           {stderr && <pre className="mt-1 whitespace-pre-wrap text-red-300/80">{stderr}</pre>}
