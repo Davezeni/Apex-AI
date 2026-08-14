@@ -129,6 +129,7 @@ async def health() -> dict:
         "pool": [e.model for e in router._pool],  # noqa: SLF001
         "github": github is not None,
         "sandbox": sandbox is not None,
+        "store_backend": type(store).__name__,
     }
 
 

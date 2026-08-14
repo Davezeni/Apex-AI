@@ -99,15 +99,25 @@ def build_router(
 
 
 def build_store(settings: Settings) -> Store:
-    if settings.store_backend == "supabase":
-        if not (settings.supabase_url and settings.supabase_service_role_key):
-            raise RuntimeError(
-                "STORE_BACKEND=supabase requires SUPABASE_URL and "
-                "SUPABASE_SERVICE_ROLE_KEY"
-            )
-        from .memory.supabase_store import SupabaseStore
+    """Build the conversation/knowledge store.
 
-        return SupabaseStore(settings.supabase_url, settings.supabase_service_role_key)
+    Degrades gracefully: if Supabase is requested but its credentials are
+    missing, fall back to local SQLite with a warning rather than crashing.
+    """
+    import logging
+
+    logger = logging.getLogger("apex.store")
+
+    if settings.store_backend == "supabase":
+        if settings.supabase_url and settings.supabase_service_role_key:
+            from .memory.supabase_store import SupabaseStore
+
+            return SupabaseStore(settings.supabase_url, settings.supabase_service_role_key)
+        logger.warning(
+            "STORE_BACKEND=supabase but SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY "
+            "are not set — falling back to local SQLite (memory will NOT "
+            "survive redeploys until you set those env vars)."
+        )
     return Store(settings.workspace_root.parent / "apex.sqlite3")
 
 
