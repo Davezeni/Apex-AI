@@ -29,6 +29,7 @@ interface ChatState {
   selectConversation: (id: string) => Promise<void>
   newConversation: () => Promise<void>
   deleteConversation: (id: string) => Promise<void>
+  renameConversation: (id: string, title: string) => Promise<void>
   addMessage: (msg: ChatMessage) => void
   appendDelta: (delta: string) => void
   appendStep: (step: ToolStep) => void
@@ -119,6 +120,19 @@ export const useChat = create<ChatState>((set) => ({
       if (next.currentId === id) {
         set({ currentId: null, messages: [] })
       }
+      await useChat.getState().loadConversations()
+    } catch {
+      /* ignore */
+    }
+  },
+
+  renameConversation: async (id, title) => {
+    try {
+      await fetch(`/api/conversations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      })
       await useChat.getState().loadConversations()
     } catch {
       /* ignore */

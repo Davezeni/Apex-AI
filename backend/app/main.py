@@ -97,6 +97,23 @@ class ConversationCreate(BaseModel):
     title: str = "New conversation"
 
 
+class ConversationRename(BaseModel):
+    title: str
+
+
+def _auto_title(text: str) -> str:
+    """Derive a short, meaningful title from the first user message."""
+    t = " ".join(text.split())
+    if not t:
+        return "New conversation"
+    # Take first ~6 words, strip trailing punctuation.
+    words = t.split()[:6]
+    title = " ".join(words).rstrip(".,;:!?")
+    if len(title) > 48:
+        title = title[:47].rstrip() + "…"
+    return title or "New conversation"
+
+
 def _event_to_dict(event) -> dict:
     data = {"type": event.__class__.__name__}
     data.update({f: getattr(event, f) for f in event.__dataclass_fields__})
@@ -175,6 +192,13 @@ async def ws_chat(ws: WebSocket) -> None:
 
             if cid:
                 store.add_message(cid, "user", message)
+                # Auto-title on the first real user message.
+                conv = store.get_conversation(cid)
+                if conv and conv.get("title") == "New conversation":
+                    try:
+                        store.rename_conversation(cid, _auto_title(message))
+                    except Exception:  # noqa: BLE001 — titling is best-effort
+                        pass
 
             answer: list[str] = []
 
@@ -215,6 +239,17 @@ async def get_conversation(cid: str) -> dict:
         raise HTTPException(status_code=404, detail="conversation not found")
     conv["messages"] = store.list_messages(cid)
     return conv
+
+
+@app.patch("/api/conversations/{cid}")
+async def rename_conversation(cid: str, req: ConversationRename) -> dict:
+    if store.get_conversation(cid) is None:
+        raise HTTPException(status_code=404, detail="conversation not found")
+    title = req.title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="title must not be empty")
+    store.rename_conversation(cid, title)
+    return {"ok": True, "title": title}
 
 
 @app.delete("/api/conversations/{cid}")

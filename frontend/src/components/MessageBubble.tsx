@@ -7,12 +7,39 @@ interface Props {
   message: ChatMessage
 }
 
+function CopyButton({ text, small = false }: { text: string; small?: boolean }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      onClick={() => {
+        navigator.clipboard?.writeText(text).then(() => {
+          setCopied(true)
+          setTimeout(() => setCopied(false), 1200)
+        })
+      }}
+      title="Copy"
+      aria-label="Copy"
+      className={`rounded border border-border text-muted transition-colors hover:text-fg ${small ? 'px-1.5 py-0.5 text-[10px]' : 'p-1'}`}
+    >
+      {copied ? '✓' : (
+        <svg width={small ? 11 : 14} height={small ? 11 : 14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+      )}
+    </button>
+  )
+}
+
 export default function MessageBubble({ message }: Props) {
   if (message.role === 'user') {
     return (
-      <div className="flex justify-end">
-        <div className="max-w-[85%] min-w-0 break-words rounded-2xl bg-panel border border-border px-4 py-2.5 text-sm leading-relaxed text-fg">
-          <RichText text={message.text} />
+      <div className="group flex justify-end">
+        <div className="flex max-w-[85%] min-w-0 items-start gap-2">
+          <div className="min-w-0 break-words rounded-2xl bg-panel border border-border px-4 py-2.5 text-sm leading-relaxed text-fg">
+            <RichText text={message.text} />
+          </div>
+          <CopyButton text={message.text} />
         </div>
       </div>
     )
@@ -116,14 +143,17 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
         <span className="font-mono text-[10px] uppercase tracking-wide text-muted">
           {lang || 'code'}
         </span>
-        {needsToggle && (
-          <button
-            onClick={() => setOpen(!open)}
-            className="ml-auto rounded border border-border px-1.5 py-0.5 text-[10px] text-muted hover:text-fg"
-          >
-            {open ? 'Show less' : `Show all (${lines.length} lines)`}
-          </button>
-        )}
+        <div className="ml-auto flex items-center gap-1.5">
+          <CopyButton text={code} small />
+          {needsToggle && (
+            <button
+              onClick={() => setOpen(!open)}
+              className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted hover:text-fg"
+            >
+              {open ? 'Show less' : `Show all (${lines.length} lines)`}
+            </button>
+          )}
+        </div>
       </div>
       <pre className="max-h-80 overflow-y-auto px-3 py-2 font-mono text-[11px] leading-relaxed text-fg/85 whitespace-pre-wrap break-words">
         {shown}

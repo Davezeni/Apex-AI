@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useChat } from '../stores/useChat'
 
 interface Props {
@@ -14,6 +14,7 @@ export default function Sidebar({ collapsed = false, hideToggle = false }: Props
   const selectConversation = useChat((s) => s.selectConversation)
   const newConversation = useChat((s) => s.newConversation)
   const deleteConversation = useChat((s) => s.deleteConversation)
+  const renameConversation = useChat((s) => s.renameConversation)
   const setMobileMenu = useChat((s) => s.setMobileMenu)
 
   useEffect(() => {
@@ -85,27 +86,14 @@ export default function Sidebar({ collapsed = false, hideToggle = false }: Props
             <p className="px-1 py-2 text-xs text-muted/60">No conversations yet</p>
           )}
           {conversations.map((c) => (
-            <div
+            <ConversationRow
               key={c.id}
-              className={`group flex items-center rounded-lg ${
-                c.id === currentId ? 'bg-surface' : 'hover:bg-surface/60'
-              }`}
-            >
-              <button
-                onClick={() => pick(c.id)}
-                className="min-w-0 flex-1 truncate px-3 py-2 text-left text-sm text-fg/90"
-              >
-                {c.title || 'Untitled'}
-              </button>
-              <button
-                onClick={() => deleteConversation(c.id)}
-                title="Delete"
-                aria-label="Delete conversation"
-                className="mr-1 rounded p-1 text-muted opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
-              >
-                ✕
-              </button>
-            </div>
+              conversation={c}
+              active={c.id === currentId}
+              onSelect={() => pick(c.id)}
+              onDelete={() => deleteConversation(c.id)}
+              onRename={(title) => renameConversation(c.id, title)}
+            />
           ))}
         </div>
       </div>
@@ -117,5 +105,71 @@ export default function Sidebar({ collapsed = false, hideToggle = false }: Props
         </p>
       </div>
     </aside>
+  )
+}
+
+function ConversationRow({
+  conversation, active, onSelect, onDelete, onRename,
+}: {
+  conversation: { id: string; title: string }
+  active: boolean
+  onSelect: () => void
+  onDelete: () => void
+  onRename: (title: string) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(conversation.title)
+
+  const commit = () => {
+    const t = value.trim()
+    if (t && t !== conversation.title) onRename(t)
+    else setValue(conversation.title)
+    setEditing(false)
+  }
+
+  return (
+    <div className={`group flex items-center rounded-lg ${active ? 'bg-surface' : 'hover:bg-surface/60'}`}>
+      {editing ? (
+        <input
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit()
+            if (e.key === 'Escape') { setValue(conversation.title); setEditing(false) }
+          }}
+          className="min-w-0 flex-1 rounded bg-panel px-2 py-1.5 text-sm text-fg outline-none ring-1 ring-border"
+        />
+      ) : (
+        <>
+          <button
+            onClick={onSelect}
+            className="min-w-0 flex-1 truncate px-3 py-2 text-left text-sm text-fg/90"
+          >
+            {conversation.title}
+          </button>
+          <button
+            onClick={() => setEditing(true)}
+            title="Rename"
+            aria-label="Rename conversation"
+            className="mr-0.5 rounded p-1 text-muted opacity-0 transition-opacity hover:text-fg group-hover:opacity-100"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+          </button>
+          <button
+            onClick={onDelete}
+            title="Delete"
+            aria-label="Delete conversation"
+            className="mr-1 rounded p-1 text-muted opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+          >
+            ✕
+          </button>
+        </>
+      )}
+    </div>
   )
 }
