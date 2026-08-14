@@ -33,13 +33,14 @@ export default function Workspace() {
   const [showHidden, setShowHidden] = useState(false)
   const activeFile = useChat((s) => s.activeFile)
   const openFile = useChat((s) => s.openFile)
+  const workspaceTick = useChat((s) => s.workspaceTick)
 
   useEffect(() => {
     fetch(`/api/workspace/tree${showHidden ? '?all=true' : ''}`)
       .then((r) => r.json())
       .then((files: string[]) => setTree(buildTree(files)))
       .catch(() => setTree([]))
-  }, [showHidden])
+  }, [showHidden, workspaceTick])
 
   return (
     <div className="flex h-full flex-col bg-surface">

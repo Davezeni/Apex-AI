@@ -15,8 +15,8 @@ from ..router.router import ModelRouter
 from ..router.schema import GenerateRequest, Message
 from ..tools.registry import ToolContext, ToolRegistry
 from .core import Agent
-from .events import AgentEvent, Review
-from .specialists import REVIEWER, classify_and_pick
+from .events import AgentEvent, Review, Summary
+from .specialists import REVIEWER, SUMMARY_PERSONA, classify_and_pick
 from .tasks import TaskKind, classify
 
 Emit = Callable[[AgentEvent], Awaitable[None]]
@@ -70,6 +70,12 @@ class Orchestrator:
             if review_text:
                 await emit(Review(text=review_text))
 
+        # 3. Emit a final summary of what was done (best-effort).
+        if answer.strip():
+            summary_text = await self._summarize(user_message, answer)
+            if summary_text:
+                await emit(Summary(text=summary_text))
+
         return answer
 
     async def _review_work(self, request: str, answer: str) -> str:
@@ -86,6 +92,18 @@ class Orchestrator:
             )
             return (result.text or "").strip()
         except Exception:  # noqa: BLE001 — review is best-effort
+            return ""
+
+    async def _summarize(self, request: str, answer: str) -> str:
+        """Produce a final done/not-done/next-steps summary (best-effort)."""
+        try:
+            prompt = SUMMARY_PERSONA.format(request=request, work=answer)
+            result = await self._router.generate(
+                GenerateRequest(messages=[Message(role="system", content=prompt)], tools=[]),
+                prefer_models=["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
+            )
+            return (result.text or "").strip()
+        except Exception:  # noqa: BLE001 — summary is best-effort
             return ""
 
 

@@ -6,6 +6,7 @@ export type AgentEvent =
   | { type: 'ToolCallEvent'; name: string; arguments: Record<string, unknown> }
   | { type: 'ToolResultEvent'; name: string; ok: boolean; summary: string; durationSeconds: number; detail: Record<string, unknown> }
   | { type: 'Review'; text: string }
+  | { type: 'Summary'; text: string }
   | { type: 'Done'; text: string }
   | { type: 'Error'; message: string }
 
@@ -36,6 +37,8 @@ export interface ChatMessage {
   thinking: string
   /** review critique from the reviewer agent */
   review?: string
+  /** final done/not-done/next-steps summary */
+  summary?: string
   error?: string
   pending?: boolean
 }

@@ -307,10 +307,13 @@ class PreviewStart(BaseModel):
 
 @app.get("/api/preview")
 async def preview_status() -> dict:
-    base = "/preview"
+    # Auto-detect: if a static index.html exists, preview is available.
+    mode = _preview_state["mode"]
+    if mode == "none" and (settings.workspace_root / "index.html").is_file():
+        mode = "static"
     return {
-        "mode": _preview_state["mode"],
-        "url": f"{base}/" if _preview_state["mode"] != "none" else None,
+        "mode": mode,
+        "url": "/preview/" if mode != "none" else None,
         "port": _preview_state["port"],
     }
 
@@ -355,22 +358,25 @@ async def _proxy(port: int, path: str, request: Request) -> Response:
 @app.api_route("/preview/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def preview(path: str, request: Request):
     mode = _preview_state["mode"]
+    root = settings.workspace_root
 
     if mode == "server":
         if sandbox is None:
             raise HTTPException(status_code=400, detail="sandbox not configured")
         return await _proxy(_preview_state["port"], path, request)
 
-    if mode == "static":
-        root = settings.workspace_root
-        target = (root / path).resolve()
-        if path == "" or path.endswith("/"):
-            target = (root / (path or "") / "index.html").resolve()
-        if not target.is_relative_to(root.resolve()) or not target.is_file():
-            raise HTTPException(status_code=404, detail="preview file not found (create an index.html or start a server)")
-        return FileResponse(target)
-
-    raise HTTPException(status_code=404, detail="no preview started (create a web app, or call /api/preview/start)")
+    # Static (or auto-detect): serve workspace files directly. This works
+    # everywhere including Render free (no Docker needed), and requires no
+    # explicit "start" call — just having an index.html is enough.
+    target = (root / path).resolve()
+    if path == "" or path.endswith("/"):
+        target = (root / (path or "") / "index.html").resolve()
+    if not target.is_relative_to(root.resolve()) or not target.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="preview file not found — ask the agent to build a web app (it should create an index.html)",
+        )
+    return FileResponse(target)
 
 
 # --------------------------------------------------------------------------- #

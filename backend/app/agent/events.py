@@ -47,8 +47,15 @@ class Review:
 
 
 @dataclass(frozen=True)
+class Summary:
+    """A final summary of what was done, emitted at the end of a turn."""
+
+    text: str
+
+
+@dataclass(frozen=True)
 class Error:
     message: str
 
 
-AgentEvent = TextDelta | Thinking | ToolCallEvent | ToolResultEvent | Done | Review | Error
+AgentEvent = TextDelta | Thinking | ToolCallEvent | ToolResultEvent | Done | Review | Summary | Error

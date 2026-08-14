@@ -9,11 +9,14 @@ interface ChatState {
   mobileMenuOpen: boolean
   activeFile: string | null
   fileContent: string
+  /** increments when the workspace may have changed (files written/agent done) */
+  workspaceTick: number
   setPane: (pane: Pane) => void
   toggleSidebar: () => void
   setMobileMenu: (open: boolean) => void
   openFile: (path: string) => Promise<void>
   closeFile: () => void
+  bumpWorkspace: () => void
   addMessage: (msg: ChatMessage) => void
   appendDelta: (delta: string) => void
   appendStep: (step: ToolStep) => void
@@ -41,10 +44,12 @@ export const useChat = create<ChatState>((set) => ({
   mobileMenuOpen: false,
   activeFile: null,
   fileContent: '',
+  workspaceTick: 0,
 
   setPane: (pane) => set({ activePane: pane, mobileMenuOpen: false }),
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   setMobileMenu: (open) => set({ mobileMenuOpen: open }),
+  bumpWorkspace: () => set((s) => ({ workspaceTick: s.workspaceTick + 1 })),
 
   openFile: async (path) => {
     set({ activeFile: path })

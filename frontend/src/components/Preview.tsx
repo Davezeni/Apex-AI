@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useChat } from '../stores/useChat'
 
 interface PreviewState {
   mode: string
@@ -9,6 +10,7 @@ interface PreviewState {
 export default function Preview() {
   const [state, setState] = useState<PreviewState>({ mode: 'none', url: null, port: null })
   const [loading, setLoading] = useState(false)
+  const workspaceTick = useChat((s) => s.workspaceTick)
 
   const load = () => {
     setLoading(true)
@@ -19,7 +21,8 @@ export default function Preview() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [])
+  // Auto-refresh when the workspace changes (agent writes files) or on mount.
+  useEffect(load, [workspaceTick])
 
   const fullUrl = state.url ? `${location.origin}${state.url}` : null
 

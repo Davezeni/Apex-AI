@@ -92,6 +92,19 @@ REVIEWER_PERSONA = (
     "ORIGINAL REQUEST:\n{request}\n"
 )
 
+SUMMARY_PERSONA = (
+    "You are Apex AI, summarizing work for the user. Given the original "
+    "request and what was actually done, write a SHORT, honest summary in 3 "
+    "bullet sections (keep it tight, 2-4 lines each):\n"
+    "✅ Done: what was actually completed or created.\n"
+    "⚠️ Not done / untested: anything incomplete, unverified, or that failed.\n"
+    "▶️ Next steps: one or two concrete recommendations.\n\n"
+    "Be accurate to what was actually done — do not claim work that wasn't "
+    "performed. Do not repeat the request verbatim.\n\n"
+    "ORIGINAL REQUEST:\n{request}\n\n"
+    "WORK DONE:\n{work}\n"
+)
+
 # --- Specialist definition ------------------------------------------------
 
 @dataclass(frozen=True)
