@@ -73,13 +73,20 @@ class Orchestrator:
         return answer
 
     async def _review_work(self, request: str, answer: str) -> str:
-        """Run the reviewer on the specialist's output (a different model)."""
-        prompt = REVIEWER.persona.format(work=answer, request=request)
-        result = await self._router.generate(
-            GenerateRequest(messages=[Message(role="system", content=prompt)], tools=[]),
-            prefer_models=REVIEWER.preferred_models or None,
-        )
-        return (result.text or "").strip()
+        """Run the reviewer on the specialist's output (a different model).
+
+        Never raises — if the reviewer cannot run (rate limits, no models),
+        we skip the review and keep the specialist's answer.
+        """
+        try:
+            prompt = REVIEWER.persona.format(work=answer, request=request)
+            result = await self._router.generate(
+                GenerateRequest(messages=[Message(role="system", content=prompt)], tools=[]),
+                prefer_models=REVIEWER.preferred_models or None,
+            )
+            return (result.text or "").strip()
+        except Exception:  # noqa: BLE001 — review is best-effort
+            return ""
 
 
 __all__ = ["Orchestrator"]

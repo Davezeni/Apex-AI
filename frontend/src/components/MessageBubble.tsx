@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ChatMessage, ToolStep } from '../types'
 
 interface Props {
@@ -16,10 +16,12 @@ export default function MessageBubble({ message }: Props) {
     )
   }
 
+  const done = !message.pending
+
   return (
     <div className="space-y-2">
       {(message.thoughtSeconds != null || message.thinking) && (
-        <Thought seconds={message.thoughtSeconds} thinking={message.thinking} />
+        <Thought seconds={message.thoughtSeconds} thinking={message.thinking} done={done} />
       )}
       {message.files.length > 0 && <EditedFiles files={message.files} />}
       {message.steps.length > 0 && <Steps steps={message.steps} />}
@@ -52,8 +54,12 @@ function ReviewBlock({ text }: { text: string }) {
   )
 }
 
-function Thought({ seconds, thinking }: { seconds: number | null; thinking: string }) {
-  const [open, setOpen] = useState(false)
+function Thought({ seconds, thinking, done }: { seconds: number | null; thinking: string; done: boolean }) {
+  // Expanded while streaming ("Thinking"), auto-collapsed once finished ("Thought").
+  const [open, setOpen] = useState(!done)
+  useEffect(() => {
+    if (done) setOpen(false)
+  }, [done])
   const hasThinking = thinking && thinking.trim().length > 0
   return (
     <div className="rounded-lg border border-border bg-deep/40">
@@ -62,10 +68,9 @@ function Thought({ seconds, thinking }: { seconds: number | null; thinking: stri
         className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-muted hover:text-fg"
       >
         <span>💭</span>
-        <span>
-          {seconds != null ? `Thought for ${seconds} second${seconds === 1 ? '' : 's'}` : 'Thinking'}
-        </span>
-        {hasThinking && <span className="ml-1 text-muted">{open ? '▾' : '▸'}</span>}
+        <span>{done ? 'Thought' : 'Thinking'}</span>
+        {done && seconds != null && <span className="text-muted/60">· {seconds}s</span>}
+        {hasThinking && <span className="ml-auto text-muted">{open ? '▾' : '▸'}</span>}
       </button>
       {open && hasThinking && (
         <div className="border-t border-border px-3 py-2 text-xs leading-relaxed text-muted whitespace-pre-wrap">

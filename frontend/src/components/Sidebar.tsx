@@ -10,16 +10,15 @@ export default function Sidebar({ collapsed = false, hideToggle = false }: Props
 
   if (collapsed) {
     return (
-      <aside className="hidden md:flex w-12 shrink-0 flex-col items-center border-r border-border bg-deep py-3">
+      <aside className="hidden md:flex w-14 shrink-0 flex-col items-center border-r border-border bg-deep py-3">
         {!hideToggle && (
           <button
             onClick={toggleSidebar}
             title="Expand sidebar"
             aria-label="Expand sidebar"
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-muted transition-colors hover:border-muted hover:text-fg"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface text-fg shadow-sm transition-colors hover:border-muted hover:bg-panel"
           >
-            {/* clear panel-expand icon (two chevrons) */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="13 17 18 12 13 7" />
               <polyline points="6 17 11 12 6 7" />
             </svg>
@@ -31,7 +30,7 @@ export default function Sidebar({ collapsed = false, hideToggle = false }: Props
 
   return (
     <aside className={`flex h-full shrink-0 flex-col border-r border-border bg-deep ${hideToggle ? 'w-full' : 'w-60'}`}>
-      {/* Brand */}
+      {/* Brand + collapse button */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <span className="text-fg text-base font-semibold">Apex AI</span>
         {!hideToggle && (
@@ -39,9 +38,9 @@ export default function Sidebar({ collapsed = false, hideToggle = false }: Props
             onClick={toggleSidebar}
             title="Collapse sidebar"
             aria-label="Collapse sidebar"
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted transition-colors hover:border-muted hover:text-fg"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-fg transition-colors hover:border-muted hover:bg-surface"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="11 17 6 12 11 7" />
               <polyline points="18 17 13 12 18 7" />
             </svg>

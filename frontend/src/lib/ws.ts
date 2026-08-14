@@ -73,6 +73,13 @@ export function connect() {
     socket = null
   })
 
+  socket.addEventListener('error', () => {
+    // Surface connection failure instead of leaving a message stuck "pending".
+    store.failMessage('connection lost — please retry')
+    store.setStreaming(false)
+    socket = null
+  })
+
   turnStart = Date.now()
 }
 

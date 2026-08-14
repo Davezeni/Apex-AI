@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { useChat } from './stores/useChat'
 import { setConversationId } from './lib/ws'
-import Header from './components/Header'
 import Sidebar from './components/Sidebar'
 import Chat from './components/Chat'
 import Workspace from './components/Workspace'
@@ -9,10 +8,10 @@ import CodeSpace from './components/CodeSpace'
 import Preview from './components/Preview'
 import type { Pane } from './types'
 
-const TABS: { id: Pane; label: string; icon: string }[] = [
-  { id: 'chat', label: 'Chat', icon: '💬' },
-  { id: 'code', label: 'Code', icon: '📁' },
-  { id: 'preview', label: 'Preview', icon: '👁️' },
+const TABS: { id: Pane; icon: string; title: string }[] = [
+  { id: 'chat', icon: '💬', title: 'Chat' },
+  { id: 'code', icon: '📁', title: 'Code' },
+  { id: 'preview', icon: '👁️', title: 'Preview' },
 ]
 
 export default function App() {
@@ -44,8 +43,6 @@ export default function App() {
 
   return (
     <div className="flex h-full flex-col bg-deep">
-      <Header />
-
       <div className="flex min-h-0 flex-1">
         {/* Left sidebar (desktop) */}
         <Sidebar collapsed={sidebarCollapsed} />
@@ -55,7 +52,6 @@ export default function App() {
           <main className="flex-1 min-w-0 border-r border-border">
             <Chat />
           </main>
-          {/* Right: workspace (file tree) + code editor */}
           <section className="w-[34%] flex flex-col border-r border-border">
             <div className="h-[45%] border-b border-border">
               <Workspace />
@@ -66,7 +62,7 @@ export default function App() {
           </section>
         </div>
 
-        {/* Mobile: top tabs + single pane */}
+        {/* Mobile: slim top bar + icon tabs + single pane */}
         <div className="flex flex-1 flex-col md:hidden">
           {mobileMenuOpen && (
             <>
@@ -78,27 +74,67 @@ export default function App() {
             </>
           )}
 
-          {/* Tabs at the top (under the header) */}
+          {/* Top bar: hamburger + brand */}
+          <div className="flex items-center gap-2 border-b border-border bg-panel px-3 py-2">
+            <button
+              onClick={() => setMobileMenu(true)}
+              title="Menu"
+              className="rounded-lg p-1.5 text-fg hover:bg-surface"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <span className="text-fg font-semibold">Apex AI</span>
+          </div>
+
+          {/* Icon-only tabs */}
           <nav className="flex border-b border-border bg-panel">
             {TABS.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setPane(t.id)}
-                className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-xs ${activePane === t.id ? 'text-fg' : 'text-muted'} ${activePane === t.id ? 'border-b-2 border-fg' : 'border-b-2 border-transparent'}`}
+                title={t.title}
+                aria-label={t.title}
+                className={`flex flex-1 items-center justify-center py-2 text-base ${activePane === t.id ? 'text-fg border-b-2 border-fg' : 'text-muted border-b-2 border-transparent'}`}
               >
-                <span className="text-base">{t.icon}</span>
-                {t.label}
+                {t.icon}
               </button>
             ))}
           </nav>
 
           <div className="flex-1 overflow-hidden">
             {activePane === 'chat' && <Chat />}
-            {activePane === 'code' && <Workspace />}
+            {activePane === 'code' && <MobileCodePane />}
             {activePane === 'preview' && <Preview />}
           </div>
         </div>
       </div>
     </div>
   )
+}
+
+/** Mobile code pane: file tree → tap a file → editor, with a back button. */
+function MobileCodePane() {
+  const activeFile = useChat((s) => s.activeFile)
+  const closeFile = useChat((s) => s.closeFile)
+
+  if (activeFile) {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex items-center gap-2 border-b border-border bg-panel px-3 py-1.5">
+          <button onClick={closeFile} className="rounded px-2 py-1 text-xs text-muted hover:text-fg">
+            ← Files
+          </button>
+          <span className="truncate text-xs font-mono text-fg/80">{activeFile}</span>
+        </div>
+        <div className="min-h-0 flex-1">
+          <CodeSpace />
+        </div>
+      </div>
+    )
+  }
+  return <Workspace />
 }

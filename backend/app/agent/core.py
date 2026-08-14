@@ -112,11 +112,15 @@ class Agent:
                 streamed_parts.append(delta)
                 await emit(TextDelta(delta=delta))
 
-            response = await self._router.generate(
-                GenerateRequest(messages=messages, tools=tool_defs),
-                on_delta=on_delta,
-                prefer_models=specialist.preferred_models or None,
-            )
+            try:
+                response = await self._router.generate(
+                    GenerateRequest(messages=messages, tools=tool_defs),
+                    on_delta=on_delta,
+                    prefer_models=specialist.preferred_models or None,
+                )
+            except Exception as exc:  # noqa: BLE001 — surface model errors, don't crash
+                await emit(Error(message=f"model error: {exc}"))
+                return final_text
 
             if response.reasoning:
                 await emit(Thinking(text=response.reasoning))

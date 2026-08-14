@@ -13,6 +13,7 @@ interface ChatState {
   toggleSidebar: () => void
   setMobileMenu: (open: boolean) => void
   openFile: (path: string) => Promise<void>
+  closeFile: () => void
   addMessage: (msg: ChatMessage) => void
   appendDelta: (delta: string) => void
   appendStep: (step: ToolStep) => void
@@ -55,6 +56,8 @@ export const useChat = create<ChatState>((set) => ({
       set({ fileContent: `// error loading ${path}` })
     }
   },
+
+  closeFile: () => set({ activeFile: null, fileContent: '' }),
 
   addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
 
