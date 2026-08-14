@@ -28,6 +28,7 @@ node_modules/
 # ---- Runtime artifacts ----
 # Root workspace dir only (not the backend/app/workspace package).
 /workspace/
+/data/
 *.sqlite3
 *.sqlite
 *.db

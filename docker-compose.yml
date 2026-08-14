@@ -1,6 +1,11 @@
+# Apex AI — production compose for a free VM (Oracle Always Free recommended).
+# One backend service serves API + WebSocket + the built frontend (single origin).
+# Ollama (local unlimited model) and the Docker sandbox are optional profiles.
 services:
-  backend:
-    build: ./backend
+  app:
+    build: .
+    container_name: apex-ai
+    restart: unless-stopped
     ports:
       - "8000:8000"
     env_file:
@@ -13,16 +18,11 @@ services:
     depends_on:
       - ollama
 
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
-
   # Local, unlimited model fallback (optional but recommended).
   ollama:
     image: ollama/ollama:latest
+    container_name: apex-ollama
+    restart: unless-stopped
     ports:
       - "11434:11434"
     volumes:
@@ -30,11 +30,12 @@ services:
     profiles:
       - ollama
 
-  # Sandbox for running generated code (Docker-in-Docker).
-  # Multi-language (Node + Python + Go); see sandbox/Dockerfile.
+  # Sandbox for running generated code (Docker-in-Docker; needs privileged on
+  # some hosts). Multi-language (Node + Python + Go).
   sandbox:
     build: ./sandbox
     container_name: apex-sandbox
+    restart: unless-stopped
     volumes:
       - ./workspace:/workspace
     profiles:

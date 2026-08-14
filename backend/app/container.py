@@ -118,7 +118,7 @@ def build_store(settings: Settings) -> Store:
             "are not set — falling back to local SQLite (memory will NOT "
             "survive redeploys until you set those env vars)."
         )
-    return Store(settings.workspace_root.parent / "apex.sqlite3")
+    return Store(settings.workspace_root.parent / "data" / "apex.sqlite3")
 
 
 def build_knowledge(settings: Settings) -> KnowledgeBase:
